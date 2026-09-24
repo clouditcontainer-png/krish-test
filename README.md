@@ -1,4 +1,9 @@
-# Infosys CCD API Platform Terraform
+---
+title: Infosys CCD API Platform Terraform
+description: Provision the Infosys CCD API platform and manage its Terraform state in Azure Storage
+ms.date: 2026-09-24
+ms.topic: overview
+---
 
 This repository provisions a secure Azure API platform for Infosys workloads using Terraform and Azure Verified Modules (AVM).
 
@@ -20,7 +25,8 @@ It creates:
 - [variables.tf](variables.tf): Input variables and validations
 - [terraform.tfvars](terraform.tfvars): Environment-specific values (example currently included)
 - [provider.tf](provider.tf): Terraform and provider requirements
-- [backend.tf](backend.tf): Backend configuration (currently local backend)
+- [backend.tf](backend.tf): Azure Storage backend configuration
+- [.terraform.lock.hcl](.terraform.lock.hcl): Locked provider versions
 - [output.tf](output.tf): Key outputs after deployment
 - [openapi_infosys_travel_accommodation.yaml](openapi_infosys_travel_accommodation.yaml): OpenAPI file imported into APIM
 
@@ -60,9 +66,53 @@ Defined in [provider.tf](provider.tf):
 ## Backend
 
 Defined in [backend.tf](backend.tf):
-- Local backend is currently configured
 
-For team usage, switch to a remote backend (for example Azure Storage backend) before collaborative deployments.
+- Backend type: Azure Storage (`azurerm`)
+- Resource group: `rg-infosys-terraform-state`
+- Storage account: `stoinfyterrafromstate001`
+- Blob container: `tfstate`
+- State key: `infosys/ccd/prod/terraform.tfstate`
+- Authentication: Microsoft Entra ID
+
+Your Azure identity needs the Storage Blob Data Contributor role on the storage account or container. The backend uses Entra ID because storage account key authentication is disabled.
+
+Authenticate and select the target subscription before initializing Terraform:
+
+```powershell
+az login
+az account set --subscription "<subscription-id-or-name>"
+$env:ARM_USE_AZUREAD = "true"
+```
+
+For a new checkout, initialize the backend with:
+
+```powershell
+terraform init
+```
+
+### Migrate existing local state
+
+Back up the local state before migration:
+
+```powershell
+Copy-Item terraform.tfstate terraform.tfstate.pre-migration.bak
+```
+
+Initialize Terraform and allow it to copy the local state into Azure Storage:
+
+```powershell
+terraform init -migrate-state
+```
+
+Enter `yes` when Terraform asks for confirmation. Verify the migrated state before removing any local backup:
+
+```powershell
+terraform state list
+terraform plan
+```
+
+> [!WARNING]
+> Never commit Terraform state files. They can contain sensitive values. The repository ignores `.terraform/`, `*.tfstate`, and `*.tfstate.*`. Keep `.terraform.lock.hcl` committed so all environments use consistent provider versions.
 
 ## Configuration
 
@@ -286,13 +336,18 @@ Use this checklist every time a new API is added:
 
 ## Recommended Improvements
 
-- Move from local backend to remote state with locking.
 - Separate environments using workspaces or separate tfvars files.
 - Add CI/CD pipeline for fmt, validate, plan, and gated apply.
 - Add policy-as-code checks (for example, Terraform compliance scanning).
 
 ## Troubleshooting
 
+- Azure Storage returns HTTP 403:
+- Confirm that the storage account name in [backend.tf](backend.tf) is exact.
+- Confirm that the signed-in identity has Storage Blob Data Contributor access.
+- Allow time for a new role assignment to propagate, then sign in again with Azure CLI.
+- Set `$env:ARM_USE_AZUREAD = "true"` before running `terraform init`.
+- Do not switch to key authentication when storage account keys are disabled.
 - Region pairing mismatch:
 - Verify power_platform_region and resource_group_location compatibility.
 - API import failure:

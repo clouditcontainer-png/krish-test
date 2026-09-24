@@ -1,0 +1,134 @@
+<policies>
+    <inbound>
+        <validate-jwt
+            header-name="{{jwt-header-name}}"
+            failed-validation-httpcode="{{jwt-failed-http-code}}"
+            failed-validation-error-message="{{jwt-failed-error-message}}"
+            require-scheme="{{jwt-required-scheme}}">
+            <openid-config url="{{jwt-openid-config-url}}" />
+            <audiences>
+                <audience>{{jwt-audience}}</audience>
+            </audiences>
+            <issuers>
+                <issuer>{{jwt-issuer}}</issuer>
+            </issuers>
+            <required-claims>
+                <claim name="scp" match="all">
+                    <value>{{jwt-required-scope}}</value>
+                </claim>
+                <claim name="tid" match="all">
+                    <value>{{jwt-tenant-id}}</value>
+                </claim>
+            </required-claims>
+        </validate-jwt>
+
+        <set-variable
+            name="powerPlatformToken"
+            value="@(context.Request.Headers.GetValueOrDefault(&quot;{{jwt-header-name}}&quot;, &quot;{{jwt-missing-value}}&quot;))" />
+
+        <base />
+
+        <set-variable
+            name="apimOutboundToken"
+            value="@(context.Request.Headers.GetValueOrDefault(&quot;{{jwt-header-name}}&quot;, &quot;{{jwt-missing-value}}&quot;))" />
+
+        <set-variable
+            name="tokenMatches"
+            value="@(
+                (string)context.Variables[&quot;powerPlatformToken&quot;] ==
+                (string)context.Variables[&quot;apimOutboundToken&quot;]
+            )" />
+
+        <trace source="PowerPlatform-To-APIM" severity="information">
+            <message>@(
+                "INBOUND_TOKEN=" +
+                (string)context.Variables["powerPlatformToken"]
+            )</message>
+        </trace>
+
+        <trace source="APIM-To-Firewall" severity="information">
+            <message>@(
+                "APIM_OUTBOUND_TOKEN=" +
+                (string)context.Variables["apimOutboundToken"]
+            )</message>
+        </trace>
+
+        <trace source="JWT-Comparison" severity="information">
+            <message>@(
+                "TOKEN_PRESENT=" +
+                (
+                    (string)context.Variables["powerPlatformToken"] !=
+                    "{{jwt-missing-value}}"
+                ).ToString() +
+                "; TOKEN_MATCH=" +
+                ((bool)context.Variables["tokenMatches"]).ToString()
+            )</message>
+        </trace>
+    </inbound>
+
+    <backend>
+        <base />
+    </backend>
+
+    <outbound>
+        <base />
+
+        <set-header name="x-debug-backend-status" exists-action="override">
+            <value>@(
+                context.Response.StatusCode.ToString()
+            )</value>
+        </set-header>
+
+        <set-header name="x-debug-token-match" exists-action="override">
+            <value>@(
+                ((bool)context.Variables["tokenMatches"]).ToString()
+            )</value>
+        </set-header>
+
+        <trace source="Backend-Response" severity="information">
+            <message>@(
+                "BACKEND_STATUS=" +
+                context.Response.StatusCode.ToString() +
+                "; TOKEN_MATCH=" +
+                ((bool)context.Variables["tokenMatches"]).ToString()
+            )</message>
+        </trace>
+    </outbound>
+
+    <on-error>
+        <base />
+
+        <set-header name="x-debug-token-match" exists-action="override">
+            <value>@(
+                context.Variables.ContainsKey("tokenMatches")
+                    ? ((bool)context.Variables["tokenMatches"]).ToString()
+                    : "Unknown"
+            )</value>
+        </set-header>
+
+        <set-header name="x-debug-backend-status" exists-action="override">
+            <value>@(
+                context.Response != null
+                    ? context.Response.StatusCode.ToString()
+                    : "Unknown"
+            )</value>
+        </set-header>
+
+        <trace source="APIM-Error" severity="error">
+            <message>@(
+                "TOKEN_MATCH=" +
+                (
+                    context.Variables.ContainsKey("tokenMatches")
+                        ? ((bool)context.Variables["tokenMatches"]).ToString()
+                        : "Unknown"
+                ) +
+                "; ERROR_REASON=" +
+                (
+                    context.LastError != null
+                        ? context.LastError.Reason
+                        : "Unknown"
+                )
+            )</message>
+        </trace>
+    </on-error>
+</policies>

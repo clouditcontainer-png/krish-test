@@ -1,0 +1,383 @@
+openapi: 3.0.0
+info:
+  title: DMS (Document Management System) API
+  description: API for managing document uploads and downloads in the iVisa application
+  version: 1.0.0
+  contact:
+    name: iVisa Support
+  license:
+    name: Apache 2.0
+
+servers:
+  - url: https://agentmeshtest.infosysapps.com/copilot
+    description: NGINX test environment
+
+tags:
+  - name: Document Download
+    description: Download documents from DMS
+  - name: Document Upload
+    description: Upload documents to DMS
+
+paths:
+  /rfedmsdnload/dmsdownload/document:
+    post:
+      tags:
+        - Document Download
+      summary: Download document from DMS
+      description: |
+        Retrieves a document from the Document Management System based on application details and document location.
+        This endpoint allows authenticated users to download documents stored in DMS by providing application information,
+        storage URL, document path, and document name.
+      operationId: downloadDocument
+      requestBody:
+        required: true
+        description: Document download request with application and document details
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DMSDownloadRequest'
+            examples:
+              downloadExample:
+                summary: Download iVisa document
+                value:
+                  applicationName: "iVisa"
+                  applicationID: "ecf66ecd-5b0d-4f34-8e1e-6db24ea4fbd1"
+                  storageURL: "http://isdmslobtst/sites/iVisa/iVisa"
+                  documentPath: "US/LCA/Documents/"
+                  documentName: "05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+      responses:
+        '200':
+          description: Document successfully retrieved
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                description: PDF document binary content
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DMSDownloadResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /rfedmsupload/dmsupload/document:
+    post:
+      tags:
+        - Document Upload
+      summary: Upload document to DMS
+      description: |
+        Uploads a document to the Document Management System. The document is stored with reference to an application
+        and can be organized by document path. The document content is provided as a base64-encoded string.
+      operationId: uploadDocument
+      requestBody:
+        required: true
+        description: Document upload request with file content and metadata
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DMSUploadRequest'
+            examples:
+              uploadExample:
+                summary: Upload iVisa document
+                value:
+                  applicationID: "ecf66ecd-5b0d-4f34-8e1e-6db24ea4fbd1"
+                  applicationName: "iVisa"
+                  documentBytes: "JVBERi0xLjUNCiXi48/TDQoxIDAgb2JqDQo8PC9UeXBlL1BhZ2UvUmVzb3VyY2VzPDwvRm9udDw8L0YxIDIgMCBSL0YyIDMgMCBSPj4+Pj4KZW5kb2JqCg=="
+                  documentName: "05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+                  documentPath: "US/LCA/Documents/"
+                  storageURL: "http://isdmslobtst/sites/iVisa/iVisa"
+                  userID: "karthick.raja@ad.infosys.com"
+      responses:
+        '201':
+          description: Document successfully uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DMSUploadResponse'
+        '400':
+          description: Invalid request - Missing required fields or invalid document format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Payload too large - Document exceeds maximum file size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    DMSDownloadRequest:
+      type: object
+      title: DMS Download Request
+      description: Request payload for downloading a document from DMS
+      required:
+        - applicationName
+        - applicationID
+        - storageURL
+        - documentPath
+        - documentName
+      properties:
+        applicationName:
+          type: string
+          description: Name of the application requesting the document download
+          example: "iVisa"
+          minLength: 1
+          maxLength: 255
+        applicationID:
+          type: string
+          format: uuid
+          description: Unique identifier of the application
+          example: "ecf66ecd-5b0d-4f34-8e1e-6db24ea4fbd1"
+        storageURL:
+          type: string
+          format: uri
+          description: Base URL of the document storage location (SharePoint or similar)
+          example: "http://isdmslobtst/sites/iVisa/iVisa"
+        documentPath:
+          type: string
+          description: Path within the storage where the document is located (folder structure)
+          example: "US/LCA/Documents/"
+          pattern: "^[a-zA-Z0-9/_-]*$"
+        documentName:
+          type: string
+          description: Name of the document file with extension
+          example: "05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+          pattern: "^[a-zA-Z0-9._-]+$"
+
+    DMSDownloadResponse:
+      type: object
+      title: DMS Download Response
+      description: Response after successfully downloading a document
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+          description: Status of the download operation
+          example: "success"
+        message:
+          type: string
+          description: Descriptive message about the download result
+          example: "Document downloaded successfully"
+        documentName:
+          type: string
+          description: Name of the downloaded document
+          example: "05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+        documentSize:
+          type: integer
+          format: int64
+          description: Size of the document in bytes
+          example: 45678
+        mimeType:
+          type: string
+          description: MIME type of the document
+          example: "application/pdf"
+        downloadedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the document was downloaded
+          example: "2025-01-03T16:30:46Z"
+
+    DMSUploadRequest:
+      type: object
+      title: DMS Upload Request
+      description: Request payload for uploading a document to DMS
+      required:
+        - applicationID
+        - applicationName
+        - documentBytes
+        - documentName
+        - documentPath
+        - storageURL
+      properties:
+        applicationID:
+          type: string
+          format: uuid
+          description: Unique identifier of the application
+          example: "ecf66ecd-5b0d-4f34-8e1e-6db24ea4fbd1"
+        applicationName:
+          type: string
+          description: Name of the application uploading the document
+          example: "iVisa"
+          minLength: 1
+          maxLength: 255
+        documentBytes:
+          type: string
+          format: byte
+          description: Document content encoded in base64 format
+          example: "JVBERi0xLjUNCiXi48/TDQoxIDAgb2JqDQo8PC9UeXBlL1BhZ2UvUmVzb3VyY2VzPDwvRm9udDw8L0YxIDIgMCBSL0YyIDMgMCBSPj4+Pj4KZW5kb2JqCg=="
+        documentName:
+          type: string
+          description: Name of the document file with extension
+          example: "05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+          pattern: "^[a-zA-Z0-9._-]+$"
+          minLength: 1
+          maxLength: 255
+        documentPath:
+          type: string
+          description: Path where the document should be stored (folder structure)
+          example: "US/LCA/Documents/"
+          pattern: "^[a-zA-Z0-9/_-]*$"
+        storageURL:
+          type: string
+          format: uri
+          description: Base URL of the document storage location
+          example: "http://isdmslobtst/sites/iVisa/iVisa"
+        userID:
+          type: string
+          description: User ID of the person uploading the document (email or username)
+          example: "karthick.raja@ad.infosys.com"
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          description: Optional description of the document
+          example: "LCA document for visa application"
+          maxLength: 500
+        tags:
+          type: array
+          items:
+            type: string
+          description: Optional tags for categorizing the document
+          example: ["visa", "lca", "work-authorization"]
+
+    DMSUploadResponse:
+      type: object
+      title: DMS Upload Response
+      description: Response after successfully uploading a document
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+          description: Status of the upload operation
+          example: "success"
+        message:
+          type: string
+          description: Descriptive message about the upload result
+          example: "Document uploaded successfully"
+        documentID:
+          type: string
+          format: uuid
+          description: Unique identifier assigned to the uploaded document
+          example: "05fe47e7-25a5-4cb1-8557-426f1a910a4d"
+        documentName:
+          type: string
+          description: Name of the uploaded document
+          example: "05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+        documentPath:
+          type: string
+          description: Path where the document was stored
+          example: "US/LCA/Documents/"
+        documentSize:
+          type: integer
+          format: int64
+          description: Size of the uploaded document in bytes
+          example: 45678
+        uploadedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the document was uploaded
+          example: "2025-01-03T16:30:46Z"
+        uploadedBy:
+          type: string
+          description: User ID of the person who uploaded the document
+          example: "karthick.raja@ad.infosys.com"
+        storageLocation:
+          type: string
+          format: uri
+          description: Full URI to access the stored document
+          example: "http://isdmslobtst/sites/iVisa/iVisa/US/LCA/Documents/05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+
+    ErrorResponse:
+      type: object
+      title: Error Response
+      description: Standard error response returned by the DMS API
+      properties:
+        status:
+          type: string
+          enum: [error]
+          description: Status indicating an error occurred
+          example: "error"
+        errorCode:
+          type: string
+          description: Specific error code for identifying the type of error
+          example: "DOC_NOT_FOUND"
+          enum:
+            - INVALID_REQUEST
+            - MISSING_FIELD
+            - INVALID_APPLICATION_ID
+            - DOCUMENT_NOT_FOUND
+            - STORAGE_ERROR
+            - UNAUTHORIZED
+            - INVALID_FILE_FORMAT
+            - FILE_SIZE_EXCEEDED
+            - UPLOAD_FAILED
+            - DOWNLOAD_FAILED
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable error message
+          example: "The requested document was not found in the storage location"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+          example:
+            documentName: "05fe47e7-25a5-4cb1-8557-426f1a910a4d.pdf"
+            documentPath: "US/LCA/Documents/"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the error occurred
+          example: "2025-01-03T16:30:46Z"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token for authentication
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Basic HTTP authentication with username and password
+
+security:
+  - bearerAuth: []
+  - basicAuth: []

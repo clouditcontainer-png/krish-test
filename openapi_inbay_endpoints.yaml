@@ -1,0 +1,505 @@
+openapi: 3.0.0
+info:
+  title: InBay (Approval Items) API
+  description: >
+    InBay API for retrieving approval items and workflow configurations. This API provides
+    pending approval tasks across multiple business processes including project approvals,
+    work-from-home requests, and other organizational workflows.
+  version: 1.0.0
+  contact:
+    name: Infosys Digital Platform Team
+    url:  https://itgatewaytst.infosys.com
+
+servers:
+  - url: https://agentmeshtest.infosysapps.com/copilot
+    description: NGINX test environment
+
+tags:
+  - name: Approval Items
+    description: Retrieve approval items and workflow configurations for web UI
+
+paths:
+  /inbaytransactions/ApprovalItemForWeb:
+    get:
+      tags:
+        - Approval Items
+      operationId: getApprovalItemsForWeb
+      summary: Retrieve Approval Items for Web UI
+      description: >
+        Fetches all pending approval items grouped by category with workflow configurations.
+        Returns approval items for various processes like project code approvals, project template 
+        approvals, work-from-home requests, and other organizational workflows.
+      parameters:
+        - name: Authorization
+          in: header
+          description: Bearer token for authentication
+          required: true
+          schema:
+            type: string
+            example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        - name: employeeId
+          in: query
+          description: Optional - Filter approvals for a specific employee ID
+          required: false
+          schema:
+            type: string
+            example: "91413"
+        - name: categoryType
+          in: query
+          description: Optional - Filter by approval category (e.g., ProjectCode, ProjectTemplate, WFH)
+          required: false
+          schema:
+            type: string
+            enum:
+              - ProjectCode
+              - ProjectTemplate
+              - WorkFromHome
+              - All
+            example: All
+      responses:
+        '200':
+          description: Successfully retrieved approval items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApprovalCategory'
+              examples:
+                ProjectCodeApproval:
+                  summary: Project Code Approval Items
+                  value:
+                    - AppCatID: 2052
+                      SubCategoryTitle: Project Code Approval
+                      Type: A
+                      Count: 2
+                      ApprovalEnabled: true
+                      MasterConfiguration:
+                        - Action_Service:
+                            RemarksMandatory:
+                              ButtonText: Approve
+                              IsCommentsMandatory: "No"
+                              ActionType: API
+                              ActionValue: https://itgatewaytst.infosys.com/infydigital/omsworkflows/api/OMSApprovalWorkflows/ApproveChildProjectByDM
+                            Remarksatory:
+                              ButtonText: Reject
+                              IsCommentsMandatory: "No"
+                              ActionType: API
+                              ActionValue: https://itgatewaytst.infosys.com/infydigital/omsworkflows/api/OMSRejectionWorkflows/RejectChildProjectByDM
+                          TypeofModel: inboxwithRedirecToCommonView
+                          inputModelType: appjsonwithremarks
+                          dateFields:
+                            - PendingSince
+                          ImageName: null
+                          HighlightFieldsinInboxview:
+                            - CustomerCode
+                            - DMName
+                            - Location
+                            - PMName
+                            - ProjectCode
+                          NonDisplayKeysInDetailsSection:
+                            - Approve_Btn
+                            - Reject_Btn
+                            - PMEmpNo
+                            - DMEmpNo
+                          BulkApprovalEnabled: false
+                          BulkServiceAvailable: false
+                          WebActionTag: null
+                      Priority: 600
+                      Item:
+                        - AppTransactionID: MP633334
+                          AppTransactionURL: https://iscls1tapps.ad.infosys.com/projectplus
+                          RequestorEmpNo: "81081"
+                          RequestorEmpName: Hemamalini Mohan
+                          RequestorEmpMailID: Hemamalini_Mohan
+                          SubmissionDate: "2026-03-02T11:19:00"
+                          TransactionTitle: Master Project Code creation request for MP633334 (APPLE) has been sent for your approval by Hemamalini Mohan.
+                          ApplicationInfoJSON:
+                            - projectCode: MP633334
+                              description: ok
+                              submitter: Hemamalini Mohan
+                              masterProject: MP633334
+                              customerCode: APPLE
+                              loeNo: 633334
+                              location: BANGALORE
+                              pmName: Hemamalini Mohan
+                              dmName: Swati Biswal
+                              pendingSince: "2026-03-02T11:18:00"
+                              slaMessage: ""
+        '400':
+          description: Bad request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: INVALID_REQUEST
+                message: Invalid filter parameters provided
+                timestamp: "2026-03-02T11:30:00Z"
+        '401':
+          description: Unauthorized - Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: UNAUTHORIZED
+                message: Authentication token is missing or expired
+                timestamp: "2026-03-02T11:30:00Z"
+        '403':
+          description: Forbidden - User does not have permission to access approval items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: FORBIDDEN
+                message: User does not have approval permissions
+                timestamp: "2026-03-02T11:30:00Z"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: INTERNAL_ERROR
+                message: An unexpected error occurred while retrieving approval items
+                timestamp: "2026-03-02T11:30:00Z"
+
+components:
+  schemas:
+    ApprovalCategory:
+      type: object
+      required:
+        - AppCatID
+        - SubCategoryTitle
+        - Type
+        - Count
+        - ApprovalEnabled
+        - MasterConfiguration
+        - Priority
+        - Item
+      properties:
+        AppCatID:
+          type: integer
+          description: Unique identifier for the approval category
+          example: 2052
+          minimum: 0
+        SubCategoryTitle:
+          type: string
+          description: Display title of the approval subcategory
+          example: Project Code Approval
+          minLength: 1
+          maxLength: 255
+        Type:
+          type: string
+          description: Approval type classification (A=Approval, R=Request, etc.)
+          example: A
+          pattern: '^[A-Z]$'
+          minLength: 1
+          maxLength: 1
+        Count:
+          type: integer
+          description: Total number of pending approval items in this category
+          example: 2
+          minimum: 0
+        ApprovalEnabled:
+          type: boolean
+          description: Flag indicating if approval workflow is active for this category
+          example: true
+        MasterConfiguration:
+          type: array
+          description: Configuration array for workflow master setup
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/MasterConfiguration'
+        Priority:
+          type: integer
+          description: Priority level for displaying approval items (higher = more important)
+          example: 600
+          minimum: 0
+          maximum: 1000
+        Item:
+          type: array
+          description: Array of individual approval items/transactions
+          items:
+            $ref: '#/components/schemas/ApprovalItem'
+
+    MasterConfiguration:
+      type: object
+      required:
+        - Action_Service
+        - TypeofModel
+      properties:
+        Action_Service:
+          type: object
+          description: Defines approval and rejection actions with button configurations
+          additionalProperties:
+            $ref: '#/components/schemas/ActionConfig'
+          example:
+            Approve:
+              ButtonText: Approve
+              IsCommentsMandatory: "No"
+              ActionType: API
+              ActionValue: https://itgatewaytst.infosys.com/infydigital/omsworkflows/api/OMSApprovalWorkflows/ApproveChildProjectByDM
+            Reject:
+              ButtonText: Reject
+              IsCommentsMandatory: "No"
+              ActionType: API
+              ActionValue: https://itgatewaytst.infosys.com/infydigital/omsworkflows/api/OMSRejectionWorkflows/RejectChildProjectByDM
+        TypeofModel:
+          type: string
+          description: UI model type for rendering approval items
+          enum:
+            - simpleview
+            - inboxwithRedirecToCommonView
+            - customview
+          example: inboxwithRedirecToCommonView
+        inputModelType:
+          type: string
+          description: Input model type for processing approval data
+          example: appjsonwithremarks
+          minLength: 1
+          maxLength: 255
+        dateFields:
+          type: array
+          description: Array of field names that should be formatted as dates
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example:
+            - PendingSince
+        ImageName:
+          type: string
+          nullable: true
+          description: Icon or image identifier for the approval category
+          example: wfh-icon
+        HighlightFieldsinInboxview:
+          type: array
+          description: Fields to be prominently displayed in inbox list view
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example:
+            - CustomerCode
+            - DMName
+            - Location
+            - PMName
+            - ProjectCode
+        NonDisplayKeysInDetailsSection:
+          type: array
+          description: Fields to be hidden in the details view
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example:
+            - Approve_Btn
+            - Reject_Btn
+            - PMEmpNo
+            - DMEmpNo
+        BulkApprovalEnabled:
+          type: boolean
+          description: Flag indicating if bulk approval is supported for this category
+          example: false
+        BulkServiceAvailable:
+          type: boolean
+          description: Flag indicating if bulk service is available
+          example: false
+        EnableDataBits:
+          type: string
+          description: Enable additional data processing features
+          example: "true"
+        WebActionTag:
+          type: string
+          nullable: true
+          description: Custom action tag for web UI integration
+          example: null
+
+    ActionConfig:
+      type: object
+      required:
+        - ButtonText
+        - IsCommentsMandatory
+        - ActionType
+        - ActionValue
+      properties:
+        ButtonText:
+          type: string
+          description: Display text for the action button
+          example: Approve
+          minLength: 1
+          maxLength: 50
+        IsCommentsMandatory:
+          type: string
+          description: Whether comments/remarks are mandatory for this action
+          enum:
+            - "Yes"
+            - "No"
+          example: "No"
+        ActionType:
+          type: string
+          description: Type of action to perform
+          enum:
+            - API
+            - URL
+            - METHOD
+          example: API
+        ActionValue:
+          type: string
+          description: API endpoint or URL to invoke for this action
+          format: uri
+          example: https://itgatewaytst.infosys.com/infydigital/omsworkflows/api/OMSApprovalWorkflows/ApproveChildProjectByDM
+
+    ApprovalItem:
+      type: object
+      required:
+        - AppTransactionID
+        - RequestorEmpNo
+        - RequestorEmpName
+        - SubmissionDate
+        - TransactionTitle
+        - ApplicationInfoJSON
+      properties:
+        AppTransactionID:
+          type: string
+          description: Unique transaction identifier for this approval item
+          example: MP633334
+          minLength: 1
+          maxLength: 50
+          pattern: '^[A-Z0-9]+$'
+        AppTransactionURL:
+          type: string
+          description: URL to view detailed information about this transaction
+          format: uri
+          example: https://iscls1tapps.ad.infosys.com/projectplus
+        RequestorEmpNo:
+          type: string
+          description: Employee number of the person who submitted the request
+          example: "81081"
+          pattern: '^[0-9\s]+$'
+          minLength: 1
+          maxLength: 20
+        RequestorEmpName:
+          type: string
+          description: Full name of the requestor employee
+          example: Hemamalini Mohan
+          minLength: 1
+          maxLength: 255
+        RequestorEmpMailID:
+          type: string
+          description: Email ID of the requestor employee
+          example: Hemamalini_Mohan
+          format: email
+          maxLength: 255
+        SubmissionDate:
+          type: string
+          description: Date and time when the request was submitted
+          format: date-time
+          example: "2026-03-02T11:19:00"
+        TransactionTitle:
+          type: string
+          description: Human-readable title/summary of the approval request
+          example: Master Project Code creation request for MP633334 (APPLE) has been sent for your approval by Hemamalini Mohan.
+          minLength: 1
+          maxLength: 1000
+        ApplicationInfoJSON:
+          type: array
+          description: Detailed application information as JSON array (dynamic schema based on category)
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: true
+          example:
+            - projectCode: MP633334
+              description: ok
+              submitter: Hemamalini Mohan
+              submitterEmpNo: Hemamalini Mohan
+              masterProject: MP633334
+              customerCode: APPLE
+              loeNo: 633334
+              startDate: Feb 24 2026
+              endDate: Aug 31 2027
+              devCenterCode: INFCITYPRK1
+              practiceUnit: FSADM1
+              location: BANGALORE
+              deliveryUnit: FSADM1-COBA
+              btp: Apple Inc.
+              billingCycle: NA
+              technology: CPG
+              pmEmpNo: 81081
+              pmName: Hemamalini Mohan
+              dmEmpNo: 460934
+              dmName: Swati Biswal
+              mporcp: MP
+              delayedBy: "4"
+              pendingSince: "2026-03-02T11:18:00"
+              slaMessage: ""
+
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - message
+        - timestamp
+      properties:
+        errorCode:
+          type: string
+          description: Error code identifier
+          enum:
+            - INVALID_REQUEST
+            - MISSING_FIELD
+            - UNAUTHORIZED
+            - FORBIDDEN
+            - NOT_FOUND
+            - INTERNAL_ERROR
+            - SERVICE_UNAVAILABLE
+            - INVALID_FILTER
+            - DATABASE_ERROR
+          example: INVALID_REQUEST
+        message:
+          type: string
+          description: Detailed error message
+          example: Invalid filter parameters provided
+          minLength: 1
+          maxLength: 500
+        timestamp:
+          type: string
+          description: Timestamp when the error occurred
+          format: date-time
+          example: "2026-03-02T11:30:00Z"
+        details:
+          type: object
+          description: Additional error details (optional)
+          nullable: true
+          additionalProperties: true
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token authentication using JWT tokens from Infosys identity provider
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: Basic HTTP authentication (username:password)
+
+security:
+  - BearerAuth: []
+  - BasicAuth: []
+
+x-api-metadata:
+  operationalStatus: active
+  supportedVersions:
+    - "1.0.0"
+  rateLimit:
+    requestsPerMinute: 100
+    requestsPerDay: 10000
+  cachePolicy:
+    ttl: 300
+    cacheable: true
+  auditLogging: enabled

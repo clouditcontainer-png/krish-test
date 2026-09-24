@@ -1,0 +1,2337 @@
+openapi: 3.0.3
+info:
+  title: Infosys Travel & Accommodation API
+  description: >
+    OpenAPI specification for the Infosys Travel Plus platform covering
+    Accommodation and Local Taxi (Travel) operations. These APIs are used by
+    the Agentic AI layer to manage employee accommodation requests, local taxi
+    bookings, approvals, and related master data lookups.
+  version: 1.0.0
+  contact:
+    name: Infosys IT Travel Platform
+
+servers:
+  - url: https://agentmeshtest.infosysapps.com
+    description: Test / UAT Gateway
+
+tags:
+  - name: Accommodation - Master Data
+    description: Endpoints for fetching accommodation master/reference data
+  - name: Accommodation - Employee Requests
+    description: Endpoints for creating, saving, submitting, and viewing accommodation requests
+  - name: Accommodation - Approval
+    description: Endpoints for approving, rejecting, and reviewing accommodation requests
+  - name: Travel (Taxi) - Master Data
+    description: Endpoints for fetching local taxi master/reference data
+  - name: Travel (Taxi) - Employee Requests
+    description: Endpoints for creating, saving, submitting, and viewing local taxi requests
+  - name: Travel (Taxi) - Approval
+    description: Endpoints for approving, rejecting, and reviewing taxi requests
+  - name: Feedback
+    description: Endpoints for capturing and displaying user feedback
+
+# ---------------------------------------------------------------------------
+# PATHS
+# ---------------------------------------------------------------------------
+paths:
+
+  # ==========================================================================
+  # ACCOMMODATION — MASTER DATA
+  # ==========================================================================
+
+  /itrvlaggcntlr/api/Aggregator/GetBasicAccommodationDataDelegation:
+    post:
+      tags:
+        - Accommodation - Master Data
+      summary: Get Accommodation Master Data (Delegate)
+      operationId: getDelegateAccommodationMasterData
+      description: >
+        Fetches all accommodation master data when the user is logged in as a
+        delegate. Returns the same master-data payload as the standard
+        GetBasicAccommodationData call but scoped to the delegated mailbox.
+      parameters:
+        - name: DelegationMailID
+          in: query
+          required: true
+          description: Mail ID of the delegate on whose behalf the call is made.
+          schema:
+            type: string
+            example: Ambika_p01
+      responses:
+        '200':
+          description: Accommodation master data for the delegate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccommodationMasterData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlaggcntlr/api/Aggregator/GetBasicAccommodationData:
+    get:
+      tags:
+        - Accommodation - Master Data
+      summary: Get Accommodation Master Data
+      operationId: getAccommodationMasterData
+      description: >
+        Fetches all accommodation master data required to populate the
+        accommodation booking screen on load (guest houses, purposes, desk
+        mappings, etc.).
+      responses:
+        '200':
+          description: Accommodation master data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccommodationMasterData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlaggcntlr/api/Aggregator/GetAccomodationCityData:
+    get:
+      tags:
+        - Accommodation - Master Data
+      summary: Get City Data for Accommodation
+      operationId: getAccommodationCityData
+      description: >
+        Retrieves a list of cities matching the search characters. Used to
+        populate the city dropdown dynamically (type-ahead search).
+      parameters:
+        - name: searchChars
+          in: query
+          required: true
+          description: Partial city name to search (minimum 2 characters recommended).
+          schema:
+            type: string
+            example: hyd
+      responses:
+        '200':
+          description: List of matching cities.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityDataList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # ACCOMMODATION — EMPLOYEE REQUESTS
+  # ==========================================================================
+
+  /itvlaccemp/api/AccomodationEmployeeDetails/GetAccommodationInbox:
+    get:
+      tags:
+        - Accommodation - Employee Requests
+      summary: Get Upcoming Accommodation Requests
+      operationId: getAccommodationInbox
+      description: >
+        Fetches the employee's saved and submitted accommodation requests to
+        display in the inbox / upcoming trips section.
+      responses:
+        '200':
+          description: Lists of saved and submitted accommodation requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccommodationInbox'
+              example:
+                savedRequest: []
+                submittedRequest:
+                  - requestNumber: 3250987
+                    cityName: BANGALORE
+                    fromDate: 11-Mar-2026
+                    toDate: 12-Mar-2026
+                  - requestNumber: 3250985
+                    cityName: BANGALORE
+                    fromDate: 11-Mar-2026
+                    toDate: 12-Mar-2026
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itvlaccemp/api/AccomodationEmployeeDetails/SubmitResubmitAccommodationRequest:
+    post:
+      tags:
+        - Accommodation - Employee Requests
+      summary: Submit / Resubmit Accommodation Request
+      operationId: submitAccommodationRequest
+      description: >
+        Submits a new accommodation request or resubmits a recalled request.
+        The same endpoint handles both operations; a non-zero `requestNo`
+        indicates a resubmission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccommodationRequestPayload'
+            example:
+              dependantsList: []
+              employeeList: []
+              visitorList: []
+              requestNo: 0
+              cityCode: 3
+              cityName: BANGALORE
+              checkInDate: 11-MAR-2026
+              checkOutDate: 12-MAR-2026
+              loggedInEmpNo: "1287778"
+              purposeID: "179"
+              purpose: Project Related
+              deskID: 83
+              deskName: GH_Bangalore
+              remarks: ""
+              checkInTime: "10:00 AM"
+              checkOutTime: "09:30 AM"
+              eTransferNumber: ""
+              guestHouseID: "41"
+              guestHouseName: ECC-Bangalore
+              projectCode: ITMMYS
+              approver: Ambika_P01
+              cboSelf: true
+              workLocation: ""
+              preferredLocation: ""
+              pincode: ""
+              isDPConsentAccepted: false
+              travelersToBeRemoved: []
+      responses:
+        '200':
+          description: Submission result with optional validation messages.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccommodationSubmitResponse'
+              example:
+                message:
+                  - "Employees of one zone (e.g. STP) cannot travel on a project belongs to another zone (e.g. SEZ), unless allocated to the given Project."
+                blnReturn: false
+                requestNumber: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itvlaccemp/api/AccomodationEmployeeDetails/SaveAccommodationRequest:
+    post:
+      tags:
+        - Accommodation - Employee Requests
+      summary: Save Accommodation Request (Draft)
+      operationId: saveAccommodationRequest
+      description: >
+        Saves an accommodation request as a draft without submitting it for
+        approval. Useful for preserving partial data before finalising the
+        request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccommodationSavePayload'
+            example:
+              visitorList: []
+              dependantsList: []
+              employeeList: []
+              purposeID: "179"
+              deskID: 83
+              eTransferNumber: ""
+              cboSelf: true
+              isDPConsentAccepted: false
+              cityCode: 3
+              cityName: BANGALORE
+              checkInDate: 11-MAR-2026
+              checkOutDate: 12-MAR-2026
+              loggedInEmpNo: "1287778"
+              purpose: Project Related
+              deskName: GH_Bangalore
+              remarks: ""
+              checkInTime: "10:00 AM"
+              checkOutTime: "09:30 AM"
+              guestHouseID: "41"
+              guestHouseName: ECC-Bangalore
+              projectCode: ITMMYS
+              approver: Ambika_P01
+              workLocation: ""
+              preferredLocation: ""
+              pincode: ""
+              travelersToBeRemoved: []
+      responses:
+        '200':
+          description: Save result with optional validation messages.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccommodationSubmitResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itvlaccemp/api/AccomodationEmployeeDetails/GetAccomodationRequestSummary:
+    get:
+      tags:
+        - Accommodation - Employee Requests
+      summary: Get Accommodation Request Summary
+      operationId: getAccommodationRequestSummary
+      description: >
+        Fetches the full summary details of a submitted accommodation request,
+        including traveller information, booking details, and approval status.
+      parameters:
+        - name: RequestNo
+          in: query
+          required: true
+          description: The accommodation request number.
+          schema:
+            type: integer
+            example: 3051527
+      responses:
+        '200':
+          description: Summary details of the accommodation request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccommodationRequestSummary'
+              example:
+                travelerDetails:
+                  - name: Srijan Nag
+                    guestType: Self
+                    relation: ""
+                bookingDetails:
+                  - guestName: Srijan Nag
+                    guestHouseName: ECC
+                    ghAddress: "Employee Care Centre,Infosys Ltd, Plot No.E/4, Infocity, Patia, Bhubaneswar -751024"
+                    mobileNumber: "0674232003, 0674232003, 7008988568"
+                    ghContactMailId: BBSR_Accommodation
+                    ghStatus: CheckedOut
+                    remarks: Non Sharing
+                fullRequestNumber: A3051527
+                cityName: Bhubaneswar
+                fromDate: 08-Oct-2024
+                toDate: 09-Oct-2024
+                approvalStatus: "Approved- Pending for booking confirmation"
+                guestHouseName: ECC
+                projectCode: SGPWOH
+                approverMailId: ""
+                noOfPerson: 1
+                isRecallEnabled: false
+                isCancelEnabled: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itvlaccemp/api/AccomodationEmployeeDetails/CopyAccommodationRequestDetail:
+    get:
+      tags:
+        - Accommodation - Employee Requests
+      summary: Copy Latest Accommodation Request Details
+      operationId: copyAccommodationRequestDetail
+      description: >
+        Retrieves the details of the employee's most recent accommodation
+        request (excluding dates) to pre-populate a new request form.
+      parameters:
+        - name: EmpNo
+          in: query
+          required: true
+          description: Employee number whose last request details are to be copied.
+          schema:
+            type: string
+            example: "1138514"
+      responses:
+        '200':
+          description: Latest accommodation request details for pre-population.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccommodationCopyDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itvlaccemp/api/AccomodationEmployeeDetails/GetSuggestions:
+    get:
+      tags:
+        - Accommodation - Employee Requests
+        - Travel (Taxi) - Employee Requests
+      summary: Get Top Suggestions and Co-Travellers
+      operationId: getSuggestions
+      description: >
+        Fetches the top 2 recent travel/taxi suggestions for the employee,
+        along with co-traveller details for quick re-use.
+      parameters:
+        - name: empNo
+          in: query
+          required: true
+          description: Employee number.
+          schema:
+            type: string
+            example: "43921"
+        - name: requestType
+          in: query
+          required: true
+          description: >
+            Type of request to fetch suggestions for.
+            `L` = Local Taxi, `A` = Accommodation.
+          schema:
+            type: string
+            enum: [L, A]
+            example: L
+      responses:
+        '200':
+          description: Taxi and accommodation suggestions with co-travellers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuggestionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itvldommas/api/DomesticMasterData/RecallCancelAccommodationRequest:
+    post:
+      tags:
+        - Accommodation - Employee Requests
+      summary: Cancel Accommodation Request
+      operationId: cancelAccommodationRequest
+      description: >
+        Cancels a submitted accommodation request. The `requestType` parameter
+        must be `C` for cancellation.
+      parameters:
+        - name: intTrvlReqNumber
+          in: query
+          required: true
+          description: Associated travel request number (0 if standalone accommodation).
+          schema:
+            type: integer
+            example: 500008
+        - name: intAccoReqNumber
+          in: query
+          required: true
+          description: Accommodation request number to cancel.
+          schema:
+            type: integer
+            example: 400009
+        - name: requestType
+          in: query
+          required: true
+          description: Must be `C` for cancel.
+          schema:
+            type: string
+            enum: [C, R]
+            example: C
+      responses:
+        '200':
+          description: Cancellation result message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResultList'
+              example:
+                - type: successreload
+                  value: 5
+                  content: "Done! Accommodation Request has been cancelled successfully"
+                  htmlContent: ""
+                  input: ""
+                  details: null
+                  transactionId: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # ACCOMMODATION — APPROVAL
+  # ==========================================================================
+
+  /itrvlappvl/api/Approval/AccomodationApprovalInfyMeWeb:
+    post:
+      tags:
+        - Accommodation - Approval
+      summary: Approve Accommodation Request
+      operationId: approveAccommodationRequest
+      description: >
+        Approves an accommodation request. All required parameters are passed
+        as query parameters. The approver must be valid and authorised.
+      parameters:
+        - name: AccRequestNumber
+          in: query
+          required: true
+          description: Accommodation request number to approve.
+          schema:
+            type: integer
+            example: 345678
+        - name: RequestType
+          in: query
+          required: true
+          description: Must be `A` for accommodation.
+          schema:
+            type: string
+            enum: [A]
+            example: A
+        - name: ApproverEmpNo
+          in: query
+          required: true
+          description: Employee number of the approver.
+          schema:
+            type: integer
+            example: 186475
+        - name: ReqEmpno
+          in: query
+          required: true
+          description: Employee number of the request originator.
+          schema:
+            type: integer
+            example: 1138514
+        - name: Remarks
+          in: query
+          required: false
+          description: Optional approval remarks.
+          schema:
+            type: string
+            example: ok
+      responses:
+        '200':
+          description: Approval action result (may contain error if approver is invalid).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResultList'
+              example:
+                - type: error
+                  content: "Sorry invalid approver."
+                  htmlContent: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlappvl/api/Approval/AccomdationRejectInfyMeWeb:
+    post:
+      tags:
+        - Accommodation - Approval
+      summary: Reject Accommodation Request
+      operationId: rejectAccommodationRequest
+      description: >
+        Rejects an accommodation request. The approver must be authorised for
+        the given request.
+      parameters:
+        - name: RequestNumber
+          in: query
+          required: true
+          description: Accommodation request number to reject.
+          schema:
+            type: integer
+            example: 345678
+        - name: RequestType
+          in: query
+          required: true
+          description: Must be `A` for accommodation.
+          schema:
+            type: string
+            enum: [A]
+            example: A
+        - name: ApproverEmpNo
+          in: query
+          required: true
+          description: Employee number of the approver.
+          schema:
+            type: integer
+            example: 186475
+        - name: ReqEmpno
+          in: query
+          required: true
+          description: Employee number of the request originator.
+          schema:
+            type: integer
+            example: 1138514
+        - name: Remarks
+          in: query
+          required: false
+          description: Rejection remarks.
+          schema:
+            type: string
+            example: OK
+      responses:
+        '200':
+          description: Rejection action result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResultList'
+              example:
+                - type: error
+                  content: "Oops! You are not authorized to perform this action."
+                  htmlContent: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlappvl/api/Approval/getEmployeeTravelplusRequestDetailsForAI:
+    post:
+      tags:
+        - Accommodation - Approval
+        - Travel (Taxi) - Approval
+      summary: Get My Pending / Approved Requests (AI)
+      operationId: getEmployeeTravelplusRequestDetailsForAI
+      description: >
+        Fetches all requests (submitted and approved) for a given employee,
+        request type, and approval status. Used by the AI agent to surface
+        pending approval tasks.
+        
+        - For accommodation approvals: `RequestType=AC`
+        - For local taxi approvals: `RequestType=L`
+      parameters:
+        - name: EmpNo
+          in: query
+          required: true
+          description: Employee number of the approver.
+          schema:
+            type: integer
+            example: 186475
+        - name: RequestType
+          in: query
+          required: true
+          description: Request type. `AC` = Accommodation, `L` = Local Taxi.
+          schema:
+            type: string
+            enum: [AC, L]
+            example: AC
+        - name: RequestStatus
+          in: query
+          required: true
+          description: >
+            Status of the request. `S` = Submitted, `N` = New/Draft,
+            `A` = Approved.
+          schema:
+            type: string
+            enum: [S, N, A]
+            example: S
+        - name: ApprovalStatus
+          in: query
+          required: true
+          description: Approval status filter. `S` = Pending approval.
+          schema:
+            type: string
+            enum: [S, A, R]
+            example: S
+      responses:
+        '200':
+          description: List of pending / approved requests for the employee.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingRequestsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlappvl/api/Approval/GetApproverInboxInfyMeWeb:
+    post:
+      tags:
+        - Accommodation - Approval
+        - Travel (Taxi) - Approval
+      summary: Get Approver Inbox
+      operationId: getApproverInbox
+      description: >
+        Fetches the approver's inbox showing requests pending action. Supports
+        both accommodation (`AC`) and local taxi (`L`) request types. An
+        optional delegation mail ID can be passed in the request body.
+      parameters:
+        - name: RequestType
+          in: query
+          required: true
+          description: >
+            Type of requests to include in inbox.
+            `AC` = Accommodation, `L` = Local Taxi.
+          schema:
+            type: string
+            enum: [AC, L]
+            example: AC
+        - name: ApprovalStatus
+          in: query
+          required: true
+          description: >
+            Filter by approval status. `S` = Submitted/pending.
+          schema:
+            type: string
+            enum: [S, A, R]
+            example: S
+        - name: Filter
+          in: query
+          required: false
+          description: Additional filter flag (e.g. `A` for all).
+          schema:
+            type: string
+            example: A
+        - name: QSAGAIMode
+          in: query
+          required: false
+          description: >
+            Set to `Y` when called from the AI / agentic context to
+            enable AI-optimised response format.
+          schema:
+            type: string
+            enum: [Y, N]
+            example: Y
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delegationMailId:
+                  type: string
+                  description: >
+                    Mail ID of the delegate whose inbox should be fetched.
+                    Omit or send empty string for own inbox.
+                  example: ambika_p01
+      responses:
+        '200':
+          description: Approver inbox items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApproverInboxResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # TRAVEL (TAXI) — MASTER DATA
+  # ==========================================================================
+
+  /itrvlaggcntlr/api/Aggregator/GetBasicTaxiDataDelegation:
+    post:
+      tags:
+        - Travel (Taxi) - Master Data
+      summary: Get Taxi Master Data (Delegate)
+      operationId: getDelegateTaxiMasterData
+      description: >
+        Fetches all local taxi master data when the user is logged in as a
+        delegate. Returns the same payload as GetBasicTaxiData but scoped
+        to the delegated mailbox.
+      parameters:
+        - name: DelegationMailID
+          in: query
+          required: true
+          description: Mail ID of the delegate.
+          schema:
+            type: string
+            example: Ambika_p01
+      responses:
+        '200':
+          description: Taxi master data for the delegate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxiMasterData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlaggcntlr/api/Aggregator/GetBasicTaxiData:
+    get:
+      tags:
+        - Travel (Taxi) - Master Data
+      summary: Get Taxi Master Data
+      operationId: getTaxiMasterData
+      description: >
+        Fetches all local taxi master data required to populate the taxi
+        booking screen on load (cities, purposes, vendors, desks, etc.).
+      responses:
+        '200':
+          description: Taxi master data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxiMasterData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlaggcntlr/api/Aggregator/GetTravlerEmployeeDetails:
+    get:
+      tags:
+        - Travel (Taxi) - Master Data
+      summary: Get Infosys Employee Co-Traveller Details
+      operationId: getTravellerEmployeeDetails
+      description: >
+        Fetches an Infosys employee's travel profile by employee number.
+        Used to add internal co-travellers to a taxi or accommodation request.
+      parameters:
+        - name: empNo
+          in: query
+          required: true
+          description: Employee number of the co-traveller to look up.
+          schema:
+            type: string
+            example: "1014605"
+      responses:
+        '200':
+          description: Employee travel profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeTravelProfile'
+              example:
+                empNumber: "1014605"
+                name: Swetha Ganesh
+                firstName: Swetha
+                middleName: ""
+                lastName: Ganesh
+                mailId: swetha.ganesh
+                gender: F
+                dateOfBirth: "1950-02-28T00:00:00"
+                age: 76
+                nationality: IN
+                passportNumber: J0123457
+                passportIssueDate: "2025-10-17T15:54:26.437"
+                passPortExpiryDate: "2025-10-17T15:54:26.437"
+                passportIssuingOffice: Office
+                mobileNumber: "91 9123456789"
+                roleCapability: Technology Analyst
+                messageList: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # TRAVEL (TAXI) — EMPLOYEE REQUESTS
+  # ==========================================================================
+
+  /itrvlloctaxreq/GetLocalTaxiInbox:
+    get:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Get Upcoming Taxi Trip Details
+      operationId: getLocalTaxiInbox
+      description: >
+        Fetches the employee's saved and submitted local taxi requests to
+        display in the upcoming trips inbox.
+      responses:
+        '200':
+          description: Lists of saved and submitted taxi requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxiInbox'
+              example:
+                savedRequest: []
+                submittedRequest:
+                  - requestNumber: 9660781
+                    cityName: BANGALORE
+                    pickUpDate: 31-Mar-2026
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/SaveTaxiRequest:
+    post:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Save Local Taxi Request (Draft)
+      operationId: saveTaxiRequest
+      description: >
+        Saves a local taxi request as a draft without submitting it for
+        approval. Allows partial completion before final submission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxiRequestPayload'
+      responses:
+        '200':
+          description: Save result with optional validation messages.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxiSubmitResponse'
+              example:
+                RequestNo: null
+                TravellerNo: null
+                MessageIndicator: E
+                SaveVisitor: []
+                SaveEmployee: []
+                MessageList:
+                  - Message: "The project code that you are using has the start date as 05-03-2026 14:05:00 and end date as 31-12-2026 00:00:00 as set in Order Management System (OMS). But the travel dates are outside this duration."
+                VisitorDeclerationResult: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/SubmitTaxiRequest:
+    post:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Submit Local Taxi Request
+      operationId: submitTaxiRequest
+      description: >
+        Submits a local taxi request for approval. `approvalStatus` and
+        `requestStatus` must be set to `S` (Submitted).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxiRequestPayload'
+      responses:
+        '200':
+          description: Submission result with optional validation messages.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxiSubmitResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/GetLocalTaxiRequestSummary:
+    get:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Get Full Details of Taxi Trip
+      operationId: getLocalTaxiRequestSummary
+      description: >
+        Fetches the full details of a local taxi request based on the
+        request number, including booking and traveller information.
+      parameters:
+        - name: RequestNo
+          in: query
+          required: true
+          description: Local taxi request number.
+          schema:
+            type: integer
+            example: 9285319
+      responses:
+        '200':
+          description: Full details of the taxi request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxiRequestSummary'
+              example:
+                travelerDetails: null
+                bookingDetails:
+                  - bookingDate: null
+                    vendorName: "Saswad Tours & Travel Pvt Ltd."
+                    cabBarnd: Dzire
+                    city: MUMBAI
+                    pickUpAddress: Hotel/ECCGuestHouse
+                    contactNumber: null
+                    bookingStatus: Booked
+                    remarks: "Fantasia GH Mumbai\tto Mumbai Airport"
+                location: MUMBAI
+                pickupPoint: ""
+                dropPoint: ""
+                pickupDate: 10-Nov-2024
+                noOfPerson: 1
+                projectCode: COSECGRP
+                approverMailId: UKN
+                approvalStatus: null
+                fullRequestNumber: T9285319
+                uberMessage: null
+                isRecallEnabled: false
+                isCancelEnabled: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/RecallTaxiRequest:
+    post:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Recall Submitted Taxi Request
+      operationId: recallTaxiRequest
+      description: >
+        Recalls a submitted local taxi request, reverting it to a draft state
+        so it can be edited and resubmitted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reqNo]
+              properties:
+                reqNo:
+                  type: integer
+                  description: Request number to recall. Use 0 for the latest request.
+                  example: 0
+      responses:
+        '200':
+          description: Recall result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecallResponse'
+              example:
+                Status: null
+                blnSuccess: false
+                ErrorId: 0
+                MessageList: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/PostReSubmitTaxiRequest:
+    post:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Resubmit Taxi Request
+      operationId: resubmitTaxiRequest
+      description: >
+        Resubmits a previously recalled local taxi request with updated
+        details. The `trvlRequestNumber` should be non-zero to indicate
+        a resubmission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxiRequestPayload'
+      responses:
+        '200':
+          description: Resubmission result with optional validation messages.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxiSubmitResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/GetTaxiRequestForCopy:
+    get:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Get Taxi Requests Available for Copy
+      operationId: getTaxiRequestForCopy
+      description: >
+        Fetches a list of recent taxi requests for the employee that can be
+        selected to copy details into a new request form.
+      responses:
+        '200':
+          description: List of copyable taxi requests.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaxiCopySummary'
+              example:
+                - requestNumber: T9660781
+                  cityName: BANGALORE
+                  pickupDate: "2026-03-31T00:00:00"
+                  dropAddress: NA
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/GetCopyTaxiRequestDetails/{requestNumber}:
+    get:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Get Taxi Request Details for Copy
+      operationId: getCopyTaxiRequestDetails
+      description: >
+        Fetches the complete details of a specific taxi request by request
+        number for pre-populating a new (copy) request form.
+      parameters:
+        - name: requestNumber
+          in: path
+          required: true
+          description: The request number whose details are to be copied.
+          schema:
+            type: integer
+            example: 9289619
+      responses:
+        '200':
+          description: Full details of the taxi request for copy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CopyTaxiRequestDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlloctaxreq/CancelTaxiRequest:
+    post:
+      tags:
+        - Travel (Taxi) - Employee Requests
+      summary: Cancel Local Taxi Request
+      operationId: cancelTaxiRequest
+      description: >
+        Cancels a submitted local taxi request. The `isActivity` flag
+        indicates whether the cancellation was triggered from an activity
+        context.
+      parameters:
+        - name: ReqNo
+          in: query
+          required: true
+          description: Taxi request number to cancel.
+          schema:
+            type: integer
+            example: 9289619
+        - name: isActivity
+          in: query
+          required: false
+          description: >
+            Set to `true` if triggered from an activity context,
+            `false` otherwise.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Cancellation result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelTaxiResponse'
+              example:
+                status: null
+                blnSuccess: false
+                errorId: 0
+                messageList:
+                  - message: "This request is already cancelled."
+                    messageIndicator: E
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # TRAVEL (TAXI) — APPROVAL
+  # ==========================================================================
+
+  /itrvlappvl/api/Approval/LocalConveyanceApprovalInfyMeWeb:
+    post:
+      tags:
+        - Travel (Taxi) - Approval
+      summary: Approve Taxi Request
+      operationId: approveTaxiRequest
+      description: >
+        Approves a local taxi request. All required parameters are passed as
+        query parameters. The approver must be valid and authorised.
+      parameters:
+        - name: AccRequestNumber
+          in: query
+          required: true
+          description: Taxi request number to approve.
+          schema:
+            type: integer
+            example: 345678
+        - name: RequestType
+          in: query
+          required: true
+          description: Must be `L` for local taxi.
+          schema:
+            type: string
+            enum: [L]
+            example: L
+        - name: ApproverEmpNo
+          in: query
+          required: true
+          description: Employee number of the approver.
+          schema:
+            type: integer
+            example: 186475
+        - name: ReqEmpno
+          in: query
+          required: true
+          description: Employee number of the request originator.
+          schema:
+            type: integer
+            example: 1138514
+        - name: Remarks
+          in: query
+          required: false
+          description: Optional approval remarks.
+          schema:
+            type: string
+            example: ok
+      responses:
+        '200':
+          description: Approval action result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResultList'
+              example:
+                - type: error
+                  content: "Oops! You are not authorized to perform this action."
+                  htmlContent: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /itrvlappvl/api/Approval/LocalConveyenceRejectInfyMeWeb:
+    post:
+      tags:
+        - Travel (Taxi) - Approval
+      summary: Reject Taxi Request
+      operationId: rejectTaxiRequest
+      description: >
+        Rejects a local taxi request. The approver must be authorised for
+        the given request.
+      parameters:
+        - name: RequestNumber
+          in: query
+          required: true
+          description: Taxi request number to reject.
+          schema:
+            type: integer
+            example: 345678
+        - name: RequestType
+          in: query
+          required: true
+          description: Must be `L` for local taxi.
+          schema:
+            type: string
+            enum: [L]
+            example: L
+        - name: ApproverEmpNo
+          in: query
+          required: true
+          description: Employee number of the approver.
+          schema:
+            type: integer
+            example: 186475
+        - name: ReqEmpno
+          in: query
+          required: true
+          description: Employee number of the request originator.
+          schema:
+            type: integer
+            example: 1138514
+        - name: Remarks
+          in: query
+          required: false
+          description: Rejection remarks.
+          schema:
+            type: string
+            example: ok
+      responses:
+        '200':
+          description: Rejection action result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResultList'
+              example:
+                - type: error
+                  content: "Oops! You are not authorized to perform this action."
+                  htmlContent: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # FEEDBACK
+  # ==========================================================================
+
+  /feedback/v1/microFeedback:
+    post:
+      tags:
+        - Feedback
+      summary: Save User Feedback
+      operationId: saveMicroFeedback
+      description: >
+        Saves a user's feedback (Like / Dislike / Neutral) for a specific
+        feature interaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackPayload'
+            example:
+              empNo: ""
+              featureSpecificJson: null
+              feedbackId: 306
+              feedbackResponse: Like
+              feedbackText: ""
+              feedbackType: LD
+      responses:
+        '200':
+          description: Feedback saved confirmation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    example: Feedback Saved Successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /feedback/v2/query/microFeedbackStatus:
+    post:
+      tags:
+        - Feedback
+      summary: Get Feedback Questions for Display
+      operationId: getMicroFeedbackStatus
+      description: >
+        Determines whether a feedback prompt should be shown to the user for
+        a given feature/process, and returns the feedback question and answer
+        options if applicable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackStatusRequest'
+            example:
+              featureName: TaxiRequest
+              processName: TaxiSubmission
+              source: InfyMeWeb
+              subFeatureName: SubmitTaxiRequest
+      responses:
+        '200':
+          description: Feedback question details and display decision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackStatusResponse'
+              example:
+                feedbackId: 306
+                toBeRendered: Y
+                feedbackQuestion: "How did you find the experience of raising taxi travel request?"
+                feedbackType: LD
+                feedbackQuestionDesc: "Any specific comments to be highlighted"
+                latestFeedbackGiven: Like
+                latestUserTextGiven: ""
+                answers:
+                  - answer: Neutral
+                    description: Neutral
+                    orderingValue: 3
+                  - answer: Like
+                    description: Like
+                    orderingValue: 1
+                  - answer: Dislike
+                    description: DisLike
+                    orderingValue: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+# ---------------------------------------------------------------------------
+# COMPONENTS
+# ---------------------------------------------------------------------------
+components:
+
+  # ---- Reusable Responses --------------------------------------------------
+  responses:
+    BadRequest:
+      description: Bad Request — missing or invalid parameters.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    Unauthorized:
+      description: Unauthorized — authentication token missing or invalid.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+  # ---- Schemas -------------------------------------------------------------
+  schemas:
+
+    # -- Shared / Generic --
+
+    ActionResult:
+      type: object
+      description: A single action result message returned by approval/rejection/cancellation endpoints.
+      properties:
+        type:
+          type: string
+          description: >
+            Result type. Common values: `error`, `success`, `successreload`,
+            `warning`, `info`.
+          example: error
+        content:
+          type: string
+          description: Human-readable result message.
+          example: "Oops! You are not authorized to perform this action."
+        htmlContent:
+          type: string
+          nullable: true
+          description: HTML-formatted content, if applicable.
+        value:
+          type: integer
+          nullable: true
+          description: Numeric value associated with the result (e.g. timeout seconds on successreload).
+        input:
+          type: string
+          nullable: true
+        details:
+          type: object
+          nullable: true
+        transactionId:
+          type: string
+          nullable: true
+
+    ActionResultList:
+      type: array
+      items:
+        $ref: '#/components/schemas/ActionResult'
+
+    TravelerProfile:
+      type: object
+      description: A traveller included in a request (employee, visitor, or dependant).
+      properties:
+        travelerSerialNo:
+          type: integer
+        firstName:
+          type: string
+        middleName:
+          type: string
+        lastName:
+          type: string
+        nationality:
+          type: string
+        gender:
+          type: string
+          enum: [M, F, O]
+        mobileNumber:
+          type: string
+        mailID:
+          type: string
+        travelerType:
+          type: string
+          description: >
+            `E` = Employee, `D` = Dependant, `S` = Self, `V` = Visitor.
+          enum: [E, D, S, V]
+        empNo:
+          type: integer
+        empNoModifiedBy:
+          type: string
+        age:
+          type: integer
+        serialNo:
+          type: integer
+        travelerNo:
+          type: integer
+
+    MessageItem:
+      type: object
+      properties:
+        Message:
+          type: string
+          description: Validation or business rule message.
+
+    # -- Accommodation --
+
+    AccommodationMasterData:
+      type: object
+      description: >
+        Master data payload for the accommodation booking screen. Contains
+        guest houses, purposes, desks, project codes, and employee profile.
+      additionalProperties: true
+
+    CityData:
+      type: object
+      properties:
+        cityCode:
+          type: integer
+          description: Unique city code.
+        cityName:
+          type: string
+          description: City display name.
+
+    CityDataList:
+      type: array
+      items:
+        $ref: '#/components/schemas/CityData'
+
+    AccommodationInboxItem:
+      type: object
+      properties:
+        requestNumber:
+          type: integer
+          description: Unique accommodation request number.
+        cityName:
+          type: string
+        fromDate:
+          type: string
+          description: Check-in date (DD-Mon-YYYY).
+          example: 11-Mar-2026
+        toDate:
+          type: string
+          description: Check-out date (DD-Mon-YYYY).
+          example: 12-Mar-2026
+
+    AccommodationInbox:
+      type: object
+      properties:
+        savedRequest:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccommodationInboxItem'
+          description: Draft / saved requests not yet submitted.
+        submittedRequest:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccommodationInboxItem'
+          description: Submitted requests awaiting approval or booking.
+
+    AccommodationRequestPayload:
+      type: object
+      description: Payload for submitting or resubmitting an accommodation request.
+      required:
+        - cityCode
+        - cityName
+        - checkInDate
+        - checkOutDate
+        - loggedInEmpNo
+        - purposeID
+        - guestHouseID
+        - projectCode
+        - approver
+      properties:
+        dependantsList:
+          type: array
+          items:
+            $ref: '#/components/schemas/TravelerProfile'
+        employeeList:
+          type: array
+          items:
+            $ref: '#/components/schemas/TravelerProfile'
+        visitorList:
+          type: array
+          items:
+            type: object
+        requestNo:
+          type: integer
+          description: Set to 0 for new requests; non-zero for resubmissions.
+          default: 0
+        cityCode:
+          type: integer
+        cityName:
+          type: string
+        checkInDate:
+          type: string
+          description: Check-in date in DD-MMM-YYYY format.
+          example: 11-MAR-2026
+        checkOutDate:
+          type: string
+          description: Check-out date in DD-MMM-YYYY format.
+          example: 12-MAR-2026
+        loggedInEmpNo:
+          type: string
+          description: Employee number of the logged-in user.
+        purposeID:
+          type: string
+        purpose:
+          type: string
+        deskID:
+          type: integer
+        deskName:
+          type: string
+        remarks:
+          type: string
+        checkInTime:
+          type: string
+          example: "10:00 AM"
+        checkOutTime:
+          type: string
+          example: "09:30 AM"
+        eTransferNumber:
+          type: string
+        guestHouseID:
+          type: string
+        guestHouseName:
+          type: string
+        projectCode:
+          type: string
+        approver:
+          type: string
+          description: Mail ID of the approver.
+        cboSelf:
+          type: boolean
+          description: Whether the request is for self.
+        workLocation:
+          type: string
+        preferredLocation:
+          type: string
+        pincode:
+          type: string
+        isDPConsentAccepted:
+          type: boolean
+          description: Data privacy consent flag.
+        travelersToBeRemoved:
+          type: array
+          items:
+            type: integer
+          description: List of traveller serial numbers to remove (for resubmissions).
+
+    AccommodationSavePayload:
+      allOf:
+        - $ref: '#/components/schemas/AccommodationRequestPayload'
+      description: >
+        Payload for saving an accommodation request as a draft. Identical
+        structure to the submit payload; the endpoint alone determines the
+        action.
+
+    AccommodationSubmitResponse:
+      type: object
+      properties:
+        message:
+          type: array
+          items:
+            type: string
+          description: Validation or business rule messages.
+        blnReturn:
+          type: boolean
+          description: >
+            `true` if the operation succeeded, `false` if there was a
+            validation error.
+        requestNumber:
+          type: integer
+          description: Generated request number (0 on failure).
+
+    AccommodationTravelerDetail:
+      type: object
+      properties:
+        name:
+          type: string
+        guestType:
+          type: string
+          description: e.g. Self, Dependent, Visitor
+        relation:
+          type: string
+
+    AccommodationBookingDetail:
+      type: object
+      properties:
+        guestName:
+          type: string
+        guestHouseName:
+          type: string
+        ghAddress:
+          type: string
+        mobileNumber:
+          type: string
+        ghContactMailId:
+          type: string
+        ghStatus:
+          type: string
+          description: e.g. CheckedIn, CheckedOut, Booked
+        remarks:
+          type: string
+
+    AccommodationRequestSummary:
+      type: object
+      properties:
+        travelerDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccommodationTravelerDetail'
+        bookingDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccommodationBookingDetail'
+        fullRequestNumber:
+          type: string
+          description: Formatted request number, e.g. A3051527.
+        cityName:
+          type: string
+        fromDate:
+          type: string
+        toDate:
+          type: string
+        approvalStatus:
+          type: string
+        guestHouseName:
+          type: string
+        projectCode:
+          type: string
+        approverMailId:
+          type: string
+        noOfPerson:
+          type: integer
+        isRecallEnabled:
+          type: boolean
+        isCancelEnabled:
+          type: boolean
+
+    AccommodationCopyDetail:
+      type: object
+      description: >
+        Latest accommodation request details for pre-populating a new
+        request (dates excluded).
+      additionalProperties: true
+
+    # -- Taxi --
+
+    TaxiMasterData:
+      type: object
+      description: >
+        Master data payload for the local taxi booking screen. Contains
+        cities, purposes, vendors, admin desks, and employee profile.
+      additionalProperties: true
+
+    EmployeeTravelProfile:
+      type: object
+      description: Infosys employee travel profile used for adding co-travellers.
+      properties:
+        empNumber:
+          type: string
+        name:
+          type: string
+        firstName:
+          type: string
+        middleName:
+          type: string
+        lastName:
+          type: string
+        mailId:
+          type: string
+        gender:
+          type: string
+          enum: [M, F, O]
+        dateOfBirth:
+          type: string
+          format: date-time
+        age:
+          type: integer
+        nationality:
+          type: string
+        passportNumber:
+          type: string
+        passportIssueDate:
+          type: string
+          format: date-time
+        passPortExpiryDate:
+          type: string
+          format: date-time
+        passportIssuingOffice:
+          type: string
+        mobileNumber:
+          type: string
+        roleCapability:
+          type: string
+        messageList:
+          type: array
+          items:
+            type: string
+
+    TaxiInboxItem:
+      type: object
+      properties:
+        requestNumber:
+          type: integer
+        cityName:
+          type: string
+        pickUpDate:
+          type: string
+          description: Pick-up date in DD-Mon-YYYY format.
+
+    TaxiInbox:
+      type: object
+      properties:
+        savedRequest:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxiInboxItem'
+          description: Draft / saved taxi requests.
+        submittedRequest:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxiInboxItem'
+          description: Submitted taxi requests.
+
+    TaxiRequestPayload:
+      type: object
+      description: >
+        Payload for saving, submitting, or resubmitting a local taxi request.
+        Set `approvalStatus` and `requestStatus` to `S` for submission,
+        `N` for draft save.
+      required:
+        - cityCode
+        - cityName
+        - pickUpDate
+        - empNo
+        - requestType
+        - projectCode
+        - approverMailId
+      properties:
+        trvlRequestNumber:
+          type: integer
+          description: Set to 0 for new requests; non-zero for resubmissions.
+          default: 0
+        cityCode:
+          type: integer
+        dropAreaID:
+          type: integer
+        purposeID:
+          type: string
+        adminDeskID:
+          type: integer
+        order:
+          type: integer
+          default: 1
+        visitorList:
+          type: array
+          items:
+            type: object
+        employeeList:
+          type: array
+          items:
+            $ref: '#/components/schemas/TravelerProfile'
+        empNo:
+          type: string
+          description: Employee number of the requester.
+        requestType:
+          type: string
+          description: Must be `L` for local taxi.
+          enum: [L]
+        environment:
+          type: string
+          description: Deployment environment identifier (e.g. `I` for Infosys internal).
+        cityName:
+          type: string
+        pickUpAddress:
+          type: string
+        pickUpAreaID:
+          type: integer
+        dropAddress:
+          type: string
+        pickUpDate:
+          type: string
+          description: Pick-up date in DD-MMM-YYYY format.
+          example: 01-SEP-2025
+        pickUpTime:
+          type: string
+          description: Pick-up time in HH:MM (24-hour) format.
+          example: "14:30"
+        approvalStatus:
+          type: string
+          description: >
+            `S` = Submit, `N` = Draft. Must be `S` for SubmitTaxiRequest.
+          enum: [S, N, A, R]
+        requestStatus:
+          type: string
+          enum: [S, N, A, R]
+        remarks:
+          type: string
+        empNoModifiedBy:
+          type: string
+        self:
+          type: string
+          description: '`1` = booking for self, `0` = booking for others.'
+          enum: ["0", "1"]
+        associate:
+          type: string
+        mobNumber:
+          type: string
+        selfBooking:
+          type: string
+          enum: ["0", "1"]
+        selfBookingAgent:
+          type: string
+        projectCode:
+          type: string
+        approverRemarks:
+          type: string
+        assignedOn:
+          type: string
+          description: ISO 8601 timestamp string of when the request was assigned.
+        approverEmpNo:
+          type: string
+        approverMailId:
+          type: string
+        urn:
+          type: string
+        isUberConsent:
+          type: boolean
+          description: Whether the employee consented to Uber's terms.
+        consentAcceptance:
+          type: string
+          enum: ["0", "1"]
+        country:
+          type: string
+        isDPConsentAccepted:
+          type: boolean
+        travelersToBeRemoved:
+          type: array
+          items:
+            type: integer
+        vendorID:
+          type: string
+          description: Vendor ID (only required for resubmissions).
+
+    TaxiSubmitResponse:
+      type: object
+      properties:
+        RequestNo:
+          type: integer
+          nullable: true
+          description: Generated request number (null on failure).
+        TravellerNo:
+          type: integer
+          nullable: true
+        MessageIndicator:
+          type: string
+          description: '`S` = Success, `E` = Error, `W` = Warning.'
+          enum: [S, E, W]
+        SaveVisitor:
+          type: array
+          items:
+            type: object
+        SaveEmployee:
+          type: array
+          items:
+            type: object
+        MessageList:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageItem'
+        VisitorDeclerationResult:
+          type: object
+          nullable: true
+
+    TaxiBookingDetail:
+      type: object
+      properties:
+        bookingDate:
+          type: string
+          nullable: true
+        vendorName:
+          type: string
+        cabBarnd:
+          type: string
+          description: Cab brand/model.
+        city:
+          type: string
+        pickUpAddress:
+          type: string
+        contactNumber:
+          type: string
+          nullable: true
+        bookingStatus:
+          type: string
+        remarks:
+          type: string
+
+    TaxiRequestSummary:
+      type: object
+      properties:
+        travelerDetails:
+          type: object
+          nullable: true
+        bookingDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxiBookingDetail'
+        location:
+          type: string
+        pickupPoint:
+          type: string
+        dropPoint:
+          type: string
+        pickupDate:
+          type: string
+        noOfPerson:
+          type: integer
+        projectCode:
+          type: string
+        approverMailId:
+          type: string
+        approvalStatus:
+          type: string
+          nullable: true
+        fullRequestNumber:
+          type: string
+          description: Formatted request number, e.g. T9285319.
+        uberMessage:
+          type: string
+          nullable: true
+        isRecallEnabled:
+          type: boolean
+        isCancelEnabled:
+          type: boolean
+
+    RecallResponse:
+      type: object
+      properties:
+        Status:
+          type: string
+          nullable: true
+        blnSuccess:
+          type: boolean
+        ErrorId:
+          type: integer
+        MessageList:
+          type: array
+          items:
+            type: string
+
+    TaxiCopySummary:
+      type: object
+      properties:
+        requestNumber:
+          type: string
+          description: Formatted request number (e.g. T9660781).
+        cityName:
+          type: string
+        pickupDate:
+          type: string
+          format: date-time
+        dropAddress:
+          type: string
+
+    TaxiTravelerDetail:
+      type: object
+      properties:
+        travelerSerialNo:
+          type: integer
+        frequentFlierList:
+          type: array
+          nullable: true
+          items:
+            type: object
+        preferenceList:
+          type: array
+          nullable: true
+          items:
+            type: object
+        requestNumber:
+          type: integer
+        travelerNo:
+          type: integer
+        requestType:
+          type: string
+        travelerType:
+          type: string
+        firstName:
+          type: string
+        middleName:
+          type: string
+        lastName:
+          type: string
+        gender:
+          type: string
+        age:
+          type: integer
+        mailID:
+          type: string
+        mobileNumber:
+          type: string
+        nationality:
+          type: string
+        empNo:
+          type: string
+        depedentRelation:
+          type: string
+        visitorPurpose:
+          type: string
+        travelerDescription:
+          type: string
+          nullable: true
+
+    TaxiDetailBlock:
+      type: object
+      properties:
+        travelerList:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxiTravelerDetail'
+        visitorDecAnswers:
+          type: object
+          nullable: true
+        reqNumber:
+          type: string
+        cityCode:
+          type: string
+        cityName:
+          type: string
+        deskName:
+          type: string
+        adminDeskID:
+          type: string
+        vendorName:
+          type: string
+        vendorID:
+          type: string
+        purpose:
+          type: string
+        purposeID:
+          type: string
+        pickUpPoint:
+          type: string
+        pickUpAreaID:
+          type: string
+        dropPoint:
+          type: string
+        dropAreaID:
+          type: string
+        pickUpAddress:
+          type: string
+        dropAddress:
+          type: string
+        projectCode:
+          type: string
+        pickupDate:
+          type: string
+        pickupTime:
+          type: string
+        mobNumber:
+          type: string
+        approverEmpNo:
+          type: string
+        approverMailId:
+          type: string
+        remarks:
+          type: string
+        sourceDeskID:
+          type: string
+        requested:
+          type: string
+        empNo:
+          type: string
+        requestStatus:
+          type: string
+        approvalStatus:
+          type: string
+        travellers:
+          type: string
+        vendorMailId:
+          type: string
+        trvlReqNumber:
+          type: string
+        self:
+          type: string
+
+    CopyTaxiRequestDetails:
+      type: object
+      properties:
+        travelDetails:
+          type: object
+          nullable: true
+        accomDetails:
+          type: object
+          nullable: true
+        taxiDetails:
+          $ref: '#/components/schemas/TaxiDetailBlock'
+        extnDetails:
+          type: object
+          nullable: true
+
+    CancelTaxiMessageItem:
+      type: object
+      properties:
+        message:
+          type: string
+        messageIndicator:
+          type: string
+          enum: [S, E, W]
+
+    CancelTaxiResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          nullable: true
+        blnSuccess:
+          type: boolean
+        errorId:
+          type: integer
+        messageList:
+          type: array
+          items:
+            $ref: '#/components/schemas/CancelTaxiMessageItem'
+
+    # -- Approval / Shared --
+
+    PendingRequestsResponse:
+      type: object
+      description: >
+        Response containing pending and approved requests for an employee,
+        structured for AI agent consumption.
+      additionalProperties: true
+
+    ApproverInboxResponse:
+      type: object
+      description: >
+        Approver inbox listing requests pending action, optimised for the AI
+        agent when QSAGAIMode=Y.
+      additionalProperties: true
+
+    # -- Suggestions --
+
+    CoTraveler:
+      type: object
+      properties:
+        firstName:
+          type: string
+        middleName:
+          type: string
+        lastName:
+          type: string
+        travelerType:
+          type: string
+        gender:
+          type: string
+        age:
+          type: integer
+        email:
+          type: string
+        nationality:
+          type: string
+        passportNumber:
+          type: string
+        passportExpiry:
+          type: string
+          format: date-time
+        passportIssueDate:
+          type: string
+          format: date-time
+        placeOfIssue:
+          type: string
+        visa:
+          type: string
+        visaValidity:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+        dependentRelation:
+          type: string
+
+    TaxiSuggestion:
+      type: object
+      properties:
+        cityName:
+          type: string
+        taxiRequestType:
+          type: string
+        lastModified:
+          type: string
+          format: date-time
+        requestNumber:
+          type: integer
+        empNo:
+          type: string
+        pickUpAddress:
+          type: string
+        dropAddress:
+          type: string
+        projectCode:
+          type: string
+        purpose:
+          type: string
+        coTravelers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoTraveler'
+
+    SuggestionsResponse:
+      type: object
+      properties:
+        taxiSuggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxiSuggestion'
+        accommodationSuggestions:
+          type: array
+          items:
+            type: object
+
+    # -- Feedback --
+
+    FeedbackPayload:
+      type: object
+      required: [feedbackId, feedbackResponse, feedbackType]
+      properties:
+        empNo:
+          type: string
+          description: Employee number (may be empty string).
+        featureSpecificJson:
+          type: object
+          nullable: true
+          description: Feature-specific metadata in JSON format.
+        feedbackId:
+          type: integer
+          description: Feedback configuration ID.
+          example: 306
+        feedbackResponse:
+          type: string
+          description: User's selected response.
+          enum: [Like, Dislike, Neutral]
+        feedbackText:
+          type: string
+          description: Optional free-text comment.
+        feedbackType:
+          type: string
+          description: Feedback type identifier (e.g. `LD` for Like/Dislike).
+          example: LD
+
+    FeedbackStatusRequest:
+      type: object
+      required: [featureName, processName, source, subFeatureName]
+      properties:
+        featureName:
+          type: string
+          example: TaxiRequest
+        processName:
+          type: string
+          example: TaxiSubmission
+        source:
+          type: string
+          description: Client source identifier.
+          example: InfyMeWeb
+        subFeatureName:
+          type: string
+          example: SubmitTaxiRequest
+
+    FeedbackAnswer:
+      type: object
+      properties:
+        answer:
+          type: string
+        description:
+          type: string
+        orderingValue:
+          type: integer
+
+    FeedbackStatusResponse:
+      type: object
+      properties:
+        feedbackId:
+          type: integer
+        toBeRendered:
+          type: string
+          description: '`Y` = show feedback prompt, `N` = suppress.'
+          enum: [Y, N]
+        feedbackQuestion:
+          type: string
+        feedbackType:
+          type: string
+        feedbackQuestionDesc:
+          type: string
+        latestFeedbackGiven:
+          type: string
+          nullable: true
+        latestUserTextGiven:
+          type: string
+          nullable: true
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackAnswer'

@@ -320,24 +320,24 @@ module "avm-res-network-virtualnetwork" {
       address_prefix = var.apim_subnet_address_prefix
       service_endpoints_with_location = [
         {
-          service  = "Microsoft.Storage"
-          location = var.resource_group_location
+          service   = "Microsoft.Storage"
+          locations = local.pp_azure_regions
         },
         {
-          service  = "Microsoft.Sql"
-          location = var.resource_group_location
+          service   = "Microsoft.Sql"
+          locations = [var.resource_group_location]
         },
         {
-          service  = "Microsoft.KeyVault"
-          location = var.resource_group_location
+          service   = "Microsoft.KeyVault"
+          locations = ["*"]
         },
         {
-          service  = "Microsoft.EventHub"
-          location = var.resource_group_location
+          service   = "Microsoft.EventHub"
+          locations = ["*"]
         },
         {
-          service  = "Microsoft.AzureActiveDirectory"
-          location = var.resource_group_location
+          service   = "Microsoft.AzureActiveDirectory"
+          locations = ["*"]
         }
       ]
       network_security_group = {
@@ -450,10 +450,9 @@ resource "azapi_resource" "firewall_public_ip" {
   }
 }
 resource "azurerm_monitor_diagnostic_setting" "this" {
-  name                           = "${var.firewall_public_ip_name}-diag"
-  target_resource_id             = azapi_resource.firewall_public_ip.id
-  log_analytics_destination_type = "Dedicated"
-  log_analytics_workspace_id     = module.law.resource_id
+  name                       = "${var.firewall_public_ip_name}-diag"
+  target_resource_id         = azapi_resource.firewall_public_ip.id
+  log_analytics_workspace_id = module.law.resource_id
   enabled_metric {
     category = "AllMetrics"
   }

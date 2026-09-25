@@ -4,7 +4,7 @@ description: Provision the Infosys CCD API platform and manage its Terraform sta
 ms.date: 2026-09-25
 ms.topic: overview
 ---
-
+test
 This repository provisions a secure Azure API platform for Infosys workloads using Terraform and Azure Verified Modules (AVM).
 
 It creates:

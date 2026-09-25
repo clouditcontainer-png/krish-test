@@ -28,7 +28,11 @@ env:
 jobs:
   terraform:
     name: Terraform plan (${{ matrix.environment }})
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - terraform-container-apps
     environment:
       name: ${{ format('{0}-plan', matrix.environment) }}
     strategy:

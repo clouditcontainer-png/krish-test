@@ -10,6 +10,11 @@ variable "resource_group_location" {
   description = "The location of the resource group"
 }
 
+variable "common_tags" {
+  type        = map(string)
+  description = "Tags applied to resources that support tagging"
+}
+
 variable "nsg_apim_name" {
   type        = string
   description = "The name of the APIM Network Security Group"

@@ -1,7 +1,7 @@
 ---
 title: Infosys CCD API Platform Terraform
 description: Provision the Infosys CCD API platform and manage its Terraform state in Azure Storage
-ms.date: 2026-09-24
+ms.date: 2026-09-25
 ms.topic: overview
 ---
 
@@ -23,11 +23,14 @@ It creates:
 
 - [main.tf](main.tf): Core infrastructure resources and module orchestration
 - [variables.tf](variables.tf): Input variables and validations
-- [terraform.tfvars](terraform.tfvars): Environment-specific values (example currently included)
+- [environments/prod/terraform.tfvars](environments/prod/terraform.tfvars): Production input values
+- [environments/prod/backend.hcl](environments/prod/backend.hcl): Production state backend values
 - [provider.tf](provider.tf): Terraform and provider requirements
-- [backend.tf](backend.tf): Azure Storage backend configuration
+- [backend.tf](backend.tf): Partial Azure Storage backend configuration
 - [.terraform.lock.hcl](.terraform.lock.hcl): Locked provider versions
 - [output.tf](output.tf): Key outputs after deployment
+- [.github/workflows/terraform-pr.yml](.github/workflows/terraform-pr.yml): Pull request validation and plan
+- [.github/workflows/terraform-deploy.yml](.github/workflows/terraform-deploy.yml): Approved environment deployment
 - [openapi_infosys_travel_accommodation.yaml](openapi_infosys_travel_accommodation.yaml): OpenAPI file imported into APIM
 
 ## High-Level Architecture
@@ -68,47 +71,26 @@ Defined in [provider.tf](provider.tf):
 Defined in [backend.tf](backend.tf):
 
 - Backend type: Azure Storage (`azurerm`)
+- Authentication: Microsoft Entra ID
+
+Environment-specific backend values are stored separately. The production backend in [environments/prod/backend.hcl](environments/prod/backend.hcl) uses:
+
 - Resource group: `rg-infosys-terraform-state`
 - Storage account: `stoinfyterrafromstate001`
 - Blob container: `tfstate`
 - State key: `infosys/ccd/prod/terraform.tfstate`
-- Authentication: Microsoft Entra ID
 
-Your Azure identity needs the Storage Blob Data Contributor role on the storage account or container. The backend uses Entra ID because storage account key authentication is disabled.
+Each additional environment must use a unique state key. Never share one state key across environments.
 
-Authenticate and select the target subscription before initializing Terraform:
+Your Azure identity needs the Storage Blob Data Contributor role on the state container. The deployment identity also needs permission to manage resources in the target scope.
+
+Authenticate, select the target subscription, and initialize the production backend:
 
 ```powershell
 az login
 az account set --subscription "<subscription-id-or-name>"
 $env:ARM_USE_AZUREAD = "true"
-```
-
-For a new checkout, initialize the backend with:
-
-```powershell
-terraform init
-```
-
-### Migrate existing local state
-
-Back up the local state before migration:
-
-```powershell
-Copy-Item terraform.tfstate terraform.tfstate.pre-migration.bak
-```
-
-Initialize Terraform and allow it to copy the local state into Azure Storage:
-
-```powershell
-terraform init -migrate-state
-```
-
-Enter `yes` when Terraform asks for confirmation. Verify the migrated state before removing any local backup:
-
-```powershell
-terraform state list
-terraform plan
+terraform init -reconfigure -backend-config="environments/prod/backend.hcl"
 ```
 
 > [!WARNING]
@@ -116,35 +98,124 @@ terraform plan
 
 ## Configuration
 
-Update values in [terraform.tfvars](terraform.tfvars) to match your environment:
+Production values are stored in [environments/prod/terraform.tfvars](environments/prod/terraform.tfvars). Update an environment file through a feature branch and pull request.
+
+Environment inputs include:
+
 - Naming conventions
 - CIDR ranges
 - Region and Power Platform region pairing
 - APIM SKU
 - Power Platform enterprise policy name
+- Resource tags
 
 Important configuration notes:
+
 - power_platform_region must be one of the allowed values in [variables.tf](variables.tf).
 - resource_group_location should match one of the mapped Azure regions for the selected Power Platform geography to ensure correct primary/secondary pairing behavior.
 - enable_vnet_peering can be set to true or false.
 - If peering is false, network reachability between primary and secondary Power Platform VNets must still be guaranteed.
+- Do not store passwords, client secrets, certificates, or API keys in a committed tfvars file.
 
-## Deploy
+### Add another environment
+
+Create `environments/<environment>/backend.hcl` and `environments/<environment>/terraform.tfvars`. Use unique resource names, non-overlapping CIDR ranges, and a unique backend state key.
+
+Add the environment name to:
+
+- The matrix in [.github/workflows/terraform-pr.yml](.github/workflows/terraform-pr.yml)
+- The workflow input options in [.github/workflows/terraform-deploy.yml](.github/workflows/terraform-deploy.yml)
+- GitHub repository or environment configuration described in the pipeline setup section
+
+## Local deployment
 
 Run from the repository root:
 
 ```powershell
-terraform init
+terraform init -reconfigure -backend-config="environments/prod/backend.hcl"
 terraform fmt -recursive
 terraform validate
-terraform plan -out tfplan
+terraform plan -var-file="environments/prod/terraform.tfvars" -out=tfplan
 terraform apply tfplan
 ```
 
-To destroy:
+## GitHub pipeline setup
+
+The workflows authenticate to Azure using OpenID Connect (OIDC). No Azure client secret is required.
+
+Create protected GitHub Environments named `prod-plan` and `prod`. Add these variables to both environments:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
+Configure required reviewers on both environments. Restrict `prod` deployments to `main`. The `prod-plan` environment should use a separate Azure identity with read-only access to production resources and only the state permissions required to initialize, lock, and read the Terraform state.
+
+Create federated identity credentials on the Azure application or user-assigned managed identity for these subjects:
+
+```text
+repo:kmohansingh_microsoft/krish-test:environment:prod-plan
+repo:kmohansingh_microsoft/krish-test:environment:prod
+```
+
+Grant the deployment identity:
+
+- Storage Blob Data Contributor on the Terraform state container
+- The required deployment role on the production target scope
+
+Grant the plan identity:
+
+- Storage Blob Data Contributor on the Terraform state container
+- Reader on the production target scope
+
+> [!IMPORTANT]
+> Require approval for `prod-plan` before exposing its OIDC identity to pull request code. Review workflow and Terraform changes before approving the plan job.
+
+### Pull request workflow
+
+[.github/workflows/terraform-pr.yml](.github/workflows/terraform-pr.yml) requests approval for the `prod-plan` environment, then runs formatting, initialization, validation, and a production plan for pull requests targeting `main`. It never applies changes.
+
+### Deployment workflow
+
+[.github/workflows/terraform-deploy.yml](.github/workflows/terraform-deploy.yml) is manually started from GitHub Actions. It:
+
+1. Runs only from `main`.
+2. Requests access to the selected protected GitHub Environment.
+3. Creates a fresh Terraform plan.
+4. Applies that exact saved plan.
+
+Environment-level concurrency and Azure blob leases prevent overlapping deployments against the same state.
+
+## Protect the main branch
+
+Create an active GitHub branch ruleset targeting `main` with:
+
+- Pull requests required before merge
+- At least one required approval
+- Code Owner review required
+- Stale approvals dismissed after new commits
+- All conversations resolved
+- `Terraform plan (prod)` required as a status check
+- Branch required to be up to date
+- Force pushes and branch deletion blocked
+- No general-user bypass
+
+The required status check becomes selectable after the pull request workflow has run successfully at least once.
+
+## Deployment process
+
+1. Create a feature branch.
+2. Update Terraform code or `environments/prod/terraform.tfvars`.
+3. Open a pull request to `main`.
+4. Review the Terraform plan and obtain approval.
+5. Merge the pull request.
+6. Run the Terraform Deploy workflow from `main`.
+7. Select `prod` and approve the protected environment deployment.
+
+To destroy resources locally:
 
 ```powershell
-terraform destroy
+terraform destroy -var-file="environments/prod/terraform.tfvars"
 ```
 
 ## What Gets Created

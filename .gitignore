@@ -8,3 +8,7 @@
 # Terraform crash logs
 crash.log
 crash.*.log
+
+# Saved Terraform plans
+tfplan
+*.tfplan

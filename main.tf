@@ -71,10 +71,7 @@ module "avm-res-resources-resourcegroup" {
   name             = var.resource_group_name
   location         = var.resource_group_location
   enable_telemetry = false
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags             = var.common_tags
 }
 
 ################APIM NSG CCD corp tenant ##############
@@ -284,10 +281,7 @@ module "avm-res-network-networksecuritygroup_apim" {
       destination_address_prefix = "VirtualNetwork"
     }
   }
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags       = var.common_tags
   depends_on = [module.avm-res-resources-resourcegroup]
 }
 
@@ -377,10 +371,7 @@ module "avm-res-network-virtualnetwork" {
       }
     }
   }
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags       = var.common_tags
   depends_on = [module.avm-res-resources-resourcegroup, module.avm-res-network-networksecuritygroup_apim, azurerm_route_table.apim]
 }
 
@@ -417,10 +408,7 @@ module "avm-res-keyvault-vault" {
       workspace_resource_id = module.law.resource_id
     }
   }
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags       = var.common_tags
   depends_on = [module.avm-res-resources-resourcegroup, module.avm-res-network-virtualnetwork]
 }
 
@@ -444,10 +432,7 @@ resource "azapi_resource" "firewall_public_ip" {
     }
   }
 
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags = var.common_tags
 }
 resource "azurerm_monitor_diagnostic_setting" "this" {
   name                       = "${var.firewall_public_ip_name}-diag"
@@ -466,10 +451,7 @@ module "avm-res-network-firewallpolicy" {
   name                = var.firewall_policy_name
   resource_group_name = module.avm-res-resources-resourcegroup.name
   enable_telemetry    = false
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags                = var.common_tags
 }
 
 
@@ -498,10 +480,7 @@ module "avm-res-network-azurefirewall" {
       workspace_resource_id = module.law.resource_id
     }
   }
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags       = var.common_tags
   depends_on = [module.avm-res-resources-resourcegroup, module.avm-res-network-virtualnetwork, module.avm-res-network-firewallpolicy]
 }
 
@@ -796,10 +775,7 @@ XML
     }
   }
 
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags = var.common_tags
   depends_on = [
     module.avm-res-resources-resourcegroup,
     module.avm-res-network-virtualnetwork,
@@ -935,10 +911,7 @@ module "pp_secondary_vnet" {
       }
     }
   }
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags       = var.common_tags
   depends_on = [module.avm-res-resources-resourcegroup]
 }
 
@@ -1082,10 +1055,7 @@ resource "azurerm_route_table" "apim" {
   name                = var.route_table_name
   location            = var.resource_group_location
   resource_group_name = module.avm-res-resources-resourcegroup.name
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags                = var.common_tags
 
   depends_on = [module.avm-res-resources-resourcegroup]
 }
@@ -1126,10 +1096,7 @@ resource "azapi_resource" "log_analytics_nsp" {
     properties = {}
   }
 
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags = var.common_tags
 }
 
 resource "azapi_resource" "log_analytics_nsp_profile" {
@@ -1174,10 +1141,7 @@ module "law" {
     access_mode  = "Learning"
   }
   enable_telemetry = false
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags             = var.common_tags
 
   depends_on = [azapi_resource.log_analytics_query_access_rule]
 }
@@ -1194,10 +1158,7 @@ resource "azurerm_application_insights" "apim" {
   internet_ingestion_enabled = true
   internet_query_enabled     = false
 
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags = var.common_tags
 
   depends_on = [module.avm-res-resources-resourcegroup, module.law]
 }
@@ -1269,10 +1230,7 @@ module "nsg_default" {
   resource_group_name = module.avm-res-resources-resourcegroup.name
   enable_telemetry    = false
 
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags = var.common_tags
 
   depends_on = [module.avm-res-resources-resourcegroup]
 }
@@ -1283,10 +1241,7 @@ resource "azurerm_route_table" "pp_secondary" {
   resource_group_name = module.avm-res-resources-resourcegroup.name
 
   depends_on = [module.avm-res-resources-resourcegroup]
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags       = var.common_tags
 }
 
 module "nsg_pp_secondary" {
@@ -1301,10 +1256,7 @@ module "nsg_pp_secondary" {
   resource_group_name = module.avm-res-resources-resourcegroup.name
   enable_telemetry    = false
 
-  tags = {
-    created_by  = "terraform"
-    Environment = "CCD-test"
-  }
+  tags = var.common_tags
 
   depends_on = [module.avm-res-resources-resourcegroup]
 }

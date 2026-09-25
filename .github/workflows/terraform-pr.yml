@@ -1,0 +1,73 @@
+name: Terraform PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**/*.tf"
+      - "**/*.tfvars"
+      - "**/*.hcl"
+      - ".github/workflows/terraform-*.yml"
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: terraform-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  ARM_USE_AZUREAD: "true"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TERRAFORM_VERSION: "1.14.3"
+
+jobs:
+  terraform:
+    name: Terraform plan (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ format('{0}-plan', matrix.environment) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - prod
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Initialize Terraform
+        run: >-
+          terraform init
+          -backend-config="environments/${{ matrix.environment }}/backend.hcl"
+          -reconfigure
+
+      - name: Validate Terraform
+        run: terraform validate
+
+      - name: Plan Terraform
+        run: >-
+          terraform plan
+          -lock-timeout=5m
+          -no-color
+          -var-file="environments/${{ matrix.environment }}/terraform.tfvars"

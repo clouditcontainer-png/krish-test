@@ -2,6 +2,12 @@
 resource_group_name     = "rg-infosys-ccd-prod-014"
 resource_group_location = "japaneast"
 
+# Resource tags
+common_tags = {
+  created_by  = "terraform"
+  Environment = "CCD-test"
+}
+
 # Network Security Group
 nsg_apim_name    = "nsg-apim-infosys-prod-014"
 default_nsg_name = "nsg-default-infosys-prod-014"

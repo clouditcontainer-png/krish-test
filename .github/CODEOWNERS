@@ -1,0 +1,6 @@
+# Terraform configuration and environment inputs
+*.tf @kmohansingh_microsoft
+/environments/ @kmohansingh_microsoft
+
+# Repository controls and deployment workflows
+/.github/ @kmohansingh_microsoft

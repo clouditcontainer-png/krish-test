@@ -778,21 +778,21 @@ XML
       scope_type       = "product"
       scope_identifier = "travel-accommodation-product"
       state            = "active"
-      allow_tracing    = true
+      allow_tracing    = false
     }
     "inbay-subscription" = {
       display_name     = "InBay Default Subscription"
       scope_type       = "product"
       scope_identifier = "inbay-product"
       state            = "active"
-      allow_tracing    = true
+      allow_tracing    = false
     }
     "dms-subscription" = {
       display_name     = "RFE DMS Default Subscription"
       scope_type       = "product"
       scope_identifier = "dms-product"
       state            = "active"
-      allow_tracing    = true
+      allow_tracing    = false
     }
   }
 

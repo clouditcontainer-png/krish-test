@@ -60,6 +60,12 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Show runner egress IP
+        shell: bash
+        run: |
+          egress_ip="$(curl --fail --silent --show-error https://api.ipify.org)"
+          echo "Runner egress IP: ${egress_ip}"
+
       - name: Initialize Terraform
         run: >-
           terraform init

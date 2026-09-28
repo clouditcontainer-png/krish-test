@@ -24,7 +24,11 @@ env:
   ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
   ARM_USE_AZUREAD: "true"
-  ARM_USE_OIDC: "true"
+  NSP_NAME: nsp-infosys-ccd-prod-014
+  NSP_PROFILE_NAME: profile-log-query
+  NSP_RESOURCE_GROUP: rg-infosys-ccd-prod-014
+  STATE_CONTAINER_NAME: tfstate
+  STATE_STORAGE_ACCOUNT_NAME: stoinfyterrafromstate001
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TERRAFORM_VERSION: "1.14.3"
@@ -36,6 +40,7 @@ jobs:
       - self-hosted
       - Linux
       - X64
+      - terraform-container-apps
     environment:
       name: ${{ format('{0}-plan', matrix.environment) }}
     strategy:
@@ -57,6 +62,68 @@ jobs:
       - name: Check Terraform formatting
         run: terraform fmt -check -recursive
 
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Show runner egress IP
+        id: egress
+        shell: bash
+        run: |
+          egress_ip="$(curl --fail --silent --show-error https://api.ipify.org)"
+          echo "Runner egress IP: ${egress_ip}"
+          echo "ip=${egress_ip}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create temporary NSP access rule
+        id: create_nsp_rule
+        shell: bash
+        env:
+          NSP_RULE_NAME: github-runner-${{ github.run_id }}-${{ github.run_attempt }}
+          RUNNER_EGRESS_IP: ${{ steps.egress.outputs.ip }}
+        run: |
+          az extension add --name nsp --upgrade --only-show-errors
+          az network perimeter profile access-rule create \
+            --resource-group "${NSP_RESOURCE_GROUP}" \
+            --perimeter-name "${NSP_NAME}" \
+            --profile-name "${NSP_PROFILE_NAME}" \
+            --name "${NSP_RULE_NAME}" \
+            --direction Inbound \
+            --address-prefixes "[\"${RUNNER_EGRESS_IP}/32\"]" \
+            --only-show-errors \
+            --output none
+
+      - name: Wait for state storage access
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if az storage blob list \
+              --account-name "${STATE_STORAGE_ACCOUNT_NAME}" \
+              --container-name "${STATE_CONTAINER_NAME}" \
+              --auth-mode login \
+              --num-results 1 \
+              --only-show-errors \
+              --output none 2>/dev/null; then
+              echo "State storage is accessible."
+              exit 0
+            fi
+
+            echo "Waiting for NSP rule propagation (${attempt}/30)..."
+            sleep 10
+          done
+
+          echo "State storage remained inaccessible after 5 minutes." >&2
+          az storage blob list \
+            --account-name "${STATE_STORAGE_ACCOUNT_NAME}" \
+            --container-name "${STATE_CONTAINER_NAME}" \
+            --auth-mode login \
+            --num-results 1 \
+            --only-show-errors \
+            --output none
+          exit 1
+
       - name: Initialize Terraform
         run: >-
           terraform init
@@ -72,3 +139,18 @@ jobs:
           -lock-timeout=5m
           -no-color
           -var-file="environments/${{ matrix.environment }}/terraform.tfvars"
+
+      - name: Delete temporary NSP access rule
+        if: ${{ always() && steps.create_nsp_rule.outcome == 'success' }}
+        shell: bash
+        env:
+          NSP_RULE_NAME: github-runner-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          az network perimeter profile access-rule delete \
+            --resource-group "${NSP_RESOURCE_GROUP}" \
+            --perimeter-name "${NSP_NAME}" \
+            --profile-name "${NSP_PROFILE_NAME}" \
+            --name "${NSP_RULE_NAME}" \
+            --yes \
+            --only-show-errors \
+            --output none

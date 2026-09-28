@@ -20,7 +20,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
   ARM_USE_AZUREAD: "true"
+  ARM_USE_OIDC: "true"
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TERRAFORM_VERSION: "1.14.3"
@@ -28,7 +32,10 @@ env:
 jobs:
   terraform:
     name: Terraform plan (${{ matrix.environment }})
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
     environment:
       name: ${{ format('{0}-plan', matrix.environment) }}
     strategy:
@@ -45,16 +52,10 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
 
       - name: Check Terraform formatting
         run: terraform fmt -check -recursive
-
-      - name: Sign in to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Initialize Terraform
         run: >-

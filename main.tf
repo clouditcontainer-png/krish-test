@@ -551,6 +551,19 @@ resource "azurerm_firewall_policy_rule_collection_group" "default" {
       destination_fqdns = ["*.management.azure-api.net"]
     }
 
+    rule {
+      name = "allow-microsoft-container-registry"
+      protocols {
+        type = "Https"
+        port = 443
+      }
+      source_addresses = ["*"]
+      destination_fqdns = [
+        "mcr.microsoft.com",
+        "*.data.mcr.microsoft.com"
+      ]
+    }
+
     # ----- APIM required outbound FQDNs (fixes GCS / Metrics / DevPortal / Captcha failures) -----
     rule {
       name = "apim-monitoring-fqdns"

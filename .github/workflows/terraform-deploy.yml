@@ -32,7 +32,7 @@ env:
 jobs:
   deploy:
     name: Deploy ${{ inputs.environment }}
-    if: github.ref == 'refs/heads/main'
+    #if: github.ref == 'refs/heads/main'
     runs-on:
       - self-hosted
       - Linux

@@ -1,14 +1,14 @@
 name: Terraform PR
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "**/*.tf"
-      - "**/*.tfvars"
-      - "**/*.hcl"
-      - ".github/workflows/terraform-*.yml"
+  #pull_request:
+  #  branches:
+  #    - main
+  #  paths:
+  #    - "**/*.tf"
+  #    - "**/*.tfvars"
+  #    - "**/*.hcl"
+  #    - ".github/workflows/terraform-*.yml"
 
 permissions:
   contents: read
@@ -32,10 +32,11 @@ env:
 jobs:
   terraform:
     name: Terraform plan (${{ matrix.environment }})
-    runs-on:
-      - self-hosted
-      - Linux
-      - X64
+    runs-on: ubuntu-latest
+    #  - self-hosted
+    #  - Linux
+    #  - X64
+      
     timeout-minutes: 30
     environment:
       name: ${{ format('{0}-plan', matrix.environment) }}
@@ -43,7 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         environment:
-          - prod
+          - prod-plan
 
     steps:
       - name: Check out repository

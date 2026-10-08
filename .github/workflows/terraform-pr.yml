@@ -32,10 +32,7 @@ env:
 jobs:
   terraform:
     name: Terraform plan (${{ matrix.environment }})
-    runs-on:
-      - self-hosted
-      - Linux
-      - X64
+    runs-on: ubuntu-24.04
 
     timeout-minutes: 30
     environment:

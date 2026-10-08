@@ -34,11 +34,7 @@ jobs:
   deploy:
     name: Deploy ${{ inputs.environment }}
     if: github.ref == 'refs/heads/main'
-    runs-on:
-      - self-hosted
-      - Linux
-      - X64
-      - terraform-container-apps
+    runs-on: ubuntu-24.04
     environment: ${{ inputs.environment }}
 
     steps:

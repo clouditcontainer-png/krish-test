@@ -55,31 +55,31 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      # - name: Get runner egress IP
-      #   id: egress
-      #   shell: bash
-      #   run: |
-      #     egress_ip="$(curl --fail --silent --show-error https://api.ipify.org)"
-      #     echo "Runner egress IP: ${egress_ip}"
-      #     echo "ip=${egress_ip}" >> "${GITHUB_OUTPUT}"
+      - name: Get runner egress IP
+        id: egress
+        shell: bash
+        run: |
+          egress_ip="$(curl --fail --silent --show-error https://api.ipify.org)"
+          echo "Runner egress IP: ${egress_ip}"
+          echo "ip=${egress_ip}" >> "${GITHUB_OUTPUT}"
 
-      # - name: Create temporary NSP access rule
-      #   id: create_nsp_rule
-      #   shell: bash
-      #   env:
-      #     NSP_RULE_NAME: github-runner-${{ github.run_id }}-${{ github.run_attempt }}
-      #     RUNNER_EGRESS_IP: ${{ steps.egress.outputs.ip }}
-      #   run: |
-      #     az extension add --name nsp --upgrade --only-show-errors
-      #     az network perimeter profile access-rule create \
-      #       --resource-group "${NSP_RESOURCE_GROUP}" \
-      #       --perimeter-name "${NSP_NAME}" \
-      #       --profile-name "${NSP_PROFILE_NAME}" \
-      #       --name "${NSP_RULE_NAME}" \
-      #       --direction Inbound \
-      #       --address-prefixes "[\"${RUNNER_EGRESS_IP}/32\"]" \
-      #       --only-show-errors \
-      #       --output none
+      - name: Create temporary NSP access rule
+        id: create_nsp_rule
+        shell: bash
+        env:
+          NSP_RULE_NAME: github-runner-${{ github.run_id }}-${{ github.run_attempt }}
+          RUNNER_EGRESS_IP: ${{ steps.egress.outputs.ip }}
+        run: |
+          az extension add --name nsp --upgrade --only-show-errors
+          az network perimeter profile access-rule create \
+            --resource-group "${NSP_RESOURCE_GROUP}" \
+            --perimeter-name "${NSP_NAME}" \
+            --profile-name "${NSP_PROFILE_NAME}" \
+            --name "${NSP_RULE_NAME}" \
+            --direction Inbound \
+            --address-prefixes "[\"${RUNNER_EGRESS_IP}/32\"]" \
+            --only-show-errors \
+            --output none
 
       - name: Wait for state storage access
         shell: bash
@@ -129,17 +129,17 @@ jobs:
       # - name: Apply deployment plan
       #   run: terraform apply -lock-timeout=5m -auto-approve tfplan
 
-      # - name: Delete temporary NSP access rule
-      #   if: ${{ always() && steps.create_nsp_rule.outcome == 'success' }}
-      #   shell: bash
-      #   env:
-      #     NSP_RULE_NAME: github-runner-${{ github.run_id }}-${{ github.run_attempt }}
-      #   run: |
-      #     az network perimeter profile access-rule delete \
-      #       --resource-group "${NSP_RESOURCE_GROUP}" \
-      #       --perimeter-name "${NSP_NAME}" \
-      #       --profile-name "${NSP_PROFILE_NAME}" \
-      #       --name "${NSP_RULE_NAME}" \
-      #       --yes \
-      #       --only-show-errors \
-      #       --output none
+      - name: Delete temporary NSP access rule
+        if: ${{ always() && steps.create_nsp_rule.outcome == 'success' }}
+        shell: bash
+        env:
+          NSP_RULE_NAME: github-runner-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          az network perimeter profile access-rule delete \
+            --resource-group "${NSP_RESOURCE_GROUP}" \
+            --perimeter-name "${NSP_NAME}" \
+            --profile-name "${NSP_PROFILE_NAME}" \
+            --name "${NSP_RULE_NAME}" \
+            --yes \
+            --only-show-errors \
+            --output none

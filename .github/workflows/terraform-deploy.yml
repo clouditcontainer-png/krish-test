@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - prod
+          - prod-plan
 
 permissions:
   contents: read
@@ -32,12 +33,12 @@ env:
 jobs:
   deploy:
     name: Deploy ${{ inputs.environment }}
-    #if: github.ref == 'refs/heads/main' // this no required
-    runs-on: ubuntu-latest
-    #  - self-hosted
-    #  - Linux
-    #  - X64
-    #  - terraform-container-apps
+    if: github.ref == 'refs/heads/main'
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - terraform-container-apps
     environment: ${{ inputs.environment }}
 
     steps:
